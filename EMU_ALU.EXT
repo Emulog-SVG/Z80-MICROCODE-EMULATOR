@@ -1,0 +1,156 @@
+
+'- - - - LUT PARITY FLAG PFLAG(0..255)=0/4, 4 IS BIT WEIGHT OF P/V IN F FLAG
+For LALU = 0 To 255: BCNT = 0:For HALU = 0 To 7 'ALL 8 BITS TEST AND COUNT BITS
+BCNT = BCNT + ((LALU Shr HALU) And 1) 'GET LOWEST BIT AND SUM IT
+Next: If BCNT And 1 Then *(PFLAG+LALU) = 0 Else *(PFLAG+LALU) = 4 ' PARITY IS SET WHEN BIT COUNT EVEN, "4" FOR RESF DIRECT ADDITION
+Next
+'- - - - - - - - - -
+
+' - - - - GENERATE 256*256*8 ALUOPS/RESULTS/FLAGS OF Z80, ARE ALU/ALUF(0..7,0..255,0..255)
+' ALL 65536 VARIATIONS OF LEFT AND RIGHT OPERANDS LUTTED HERE, FLAGS SEPARATELY, ALL OPS HAVE FULL FLAG AFFECTION, NO NEED OF MASKING
+' FLAGS AFFECTION - BIT 5 AND 3 IN F ARE of the ALUOP result, NOT INPUTS, EXCLUDING CP, IT DOES FROM RIGHT OPERAND
+For LALU = 0 To 255: For HALU = 0 To 255
+' - - ADD ALUOP - - OF *add sub and or adc ADCC sbc SBCC xor cp
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU + HALU: PE = PEW: ALU(AADD, LALU, HALU) = PE
+RESF = PE And (128 + 32 + 8) ' COPY BIT 7(S),5 AND 3
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+If PEW > 255 Then RESF = RESF + 1 ' SET CARRY
+PE = ((LALU And 15) + (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SO SET H
+'!!! AS TESTED IN SPECTACULATOR HERE HCARRY IS STRICT LOW NIB 4BIT ALU CARRY IN ADD CASE
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 0 And S3 = 128 Then RESF = RESF + 4 'SAME ++SIGNS AND RESULT -NOT
+If S1 = 128 And S2 = 128 And S3 = 0 Then RESF = RESF + 4 'SAME --SIGNS AND RESULT +NOT
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For addition, operands with different signs never cause overflow. When adding operands with similar signs
+'and the result contains a different sign, the Overflow Flag is set
+ALUF(AADD, LALU, HALU) = RESF
+' - - SUB ALUOP - - OF add *sub and or adc ADCC sbc SBCC xor cp
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU - HALU: PE = PEW: ALU(ASUB, LALU, HALU) = PE ' SUB AND WRITE
+RESF = (PE And (128 + 32 + 8)) + 2 ' COPY BIT 7(S),5 AND 3, AND SET N
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+If PEW > 255 Then RESF = RESF + 1 ' SET CARRY OK TESTED
+PE = ((LALU And 15) - (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SET,SO SET H, SAME AS ADD
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 128 And S3 = 128 Then RESF = RESF + 4 'SIGNS UNEQ AND + PRODUCE - SO SET OVF
+If S1 = 128 And S2 = 0 And S3 = 0 Then RESF = RESF + 4 'SIGNS UNEQ AND - PRODUCE + SO SET OVF
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For subtraction, overflow can occur for operands of unalike signs. Operands of alike signs never cause overflow
+'The minuend sign has changed from a positive to a negative VS FIRST VALUE , resulting in an incorrect difference; the Overflow Flag is set.
+ALUF(ASUB, LALU, HALU) = RESF
+' - - AND ALUOP - - OF add sub *and or adc ADCC sbc SBCC xor cp, AND r SZ513P00
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PE = LALU And HALU: ALU(AAND, LALU, HALU) = PE
+RESF = (PE And (128 + 32 + 8)) + 16 + *(PFLAG+PE) ' COPY BIT 7(S),5 AND 3, NC=0, H SET, LUT FOR PARITY ADD 4 OR NOT SO SET
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+ALUF(AAND, LALU, HALU) = RESF
+' - - OR ALUOP - - OF add sub and *or adc ADCC sbc SBCC xor cp, OR/XOR r SZ503P00
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PE = LALU Or HALU: ALU(AOR, LALU, HALU) = PE
+RESF = (PE And (128 + 32 + 8)) + *(PFLAG+PE) ' COPY BIT 7(S),5 AND 3, HNC=0, LUT PARITY
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+ALUF(AOR, LALU, HALU) = RESF
+' - - ADCC ALUOP - - OF add sub and or adc ADCC* sbc SBCC xor cp, NC/ADC SAME AS ADD, ADC A,s A=A+s+CF
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU + HALU + 1: PE = PEW: ALU(AADCC, LALU, HALU) = PE
+RESF = PE And (128 + 32 + 8) ' COPY BIT 7(S),5 AND 3
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+If PEW > 255 Then RESF = RESF + 1 ' SET CARRY
+PE = ((LALU And 15) + (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SET H
+'!!! AS TESTED IN SPECTACULATOR HERE HCARRY IS STRICT LOW NIB 4BIT ALU CARRY IN ADD CASE
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 0 And S3 = 128 Then RESF = RESF + 4 'SAME ++SIGNS AND RESULT -NOT
+If S1 = 128 And S2 = 128 And S3 = 0 Then RESF = RESF + 4 'SAME --SIGNS AND RESULT +NOT
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For addition, operands with different signs never cause overflow. When adding operands with similar signs
+'and the result contains a different sign, the Overflow Flag is set
+ALUF(AADCC, LALU, HALU) = RESF
+' - - SBCC ALUOP - - OF add *sub and or adc ADCC sbc SBCC xor cp, SBC A,s A=A-s-CF
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU - HALU - 1: PE = PEW: ALU(ASBCC, LALU, HALU) = PE ' SUB AND WRITE
+RESF = (PE And (128 + 32 + 8)) + 2 ' COPY BIT 7(S),5 AND 3, AND SET N
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+If PEW > 255 Then RESF = RESF + 1 ' SET CARRY OK TESTED
+PE = ((LALU And 15) - (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SET,SO SET H, SAME AS ADD
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 128 And S3 = 128 Then RESF = RESF + 4 'SIGNS UNEQ AND + PRODUCE - SO SET OVF
+If S1 = 128 And S2 = 0 And S3 = 0 Then RESF = RESF + 4 'SIGNS UNEQ AND - PRODUCE + SO SET OVF
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For subtraction, overflow can occur for operands of unalike signs. Operands of alike signs never cause overflow
+'The minuend sign has changed from a positive to a negative VS FIRST VALUE , resulting in an incorrect difference; the Overflow Flag is set.
+ALUF(ASBCC, LALU, HALU) = RESF
+' - - XOR ALUOP - - OF add sub and or adc ADCC sbc SBCC *xor cp, OR/XOR r SZ503P00
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PE = LALU Xor HALU: ALU(AXOR, LALU, HALU) = PE
+RESF = (PE And (128 + 32 + 8)) + *(PFLAG+PE) ' COPY BIT 7(S),5 AND 3, HNC=0, LUT PARITY
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+ALUF(AXOR, LALU, HALU) = RESF
+' - - CP ALUOP - - OF add sub and or adc ADCC sbc SBCC xor cp*, cp J f5 := J.5, f3 = J.3
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU - HALU: PE = PEW: ALU(ACP, LALU, HALU) = LALU 'FIRST OPERAND IS RESULT, SO NO CHANGE ONLY FAKE SUB AFFECT FLAGS
+RESF = (PE And (128)) + (HALU And (32 + 8)) + 2 ' COPY BIT 7(S),5 AND 3 ARE FROM RIGHT OPERAND (CHECKED AT VZ80), NOT RESULT, AND SET N
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z ' IF BOTH OPERANDS EQUAL SET Z TO 1
+If PEW > 255 Then RESF = RESF + 1 ' SET CARRY OK TESTED
+PE = ((LALU And 15) - (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SET,SO SET H, SAME AS ADD
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 128 And S3 = 128 Then RESF = RESF + 4 'SIGNS UNEQ AND + PRODUCE - SO SET OVF
+If S1 = 128 And S2 = 0 And S3 = 0 Then RESF = RESF + 4 'SIGNS UNEQ AND - PRODUCE + SO SET OVF
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For subtraction, overflow can occur for operands of unalike signs. Operands of alike signs never cause overflow
+'The minuend sign has changed from a positive to a negative VS FIRST VALUE , resulting in an incorrect difference; the Overflow Flag is set.
+ALUF(ACP, LALU, HALU) = RESF
+Next: Next
+'- - - - - - - - - -
+
+' - - - - GENERATE INC/DEC LUT FOR R8 OPS INC R _000XXX00 FOR BCDE _001XXX00 FOR HLPA DEC R _000XXX01 FOR BCDE _001XXX01 FOR HLPA
+' ADD/ADC/SUB/SBC   SZ5H3VNC
+' INC/DEC r SZ5H3VN-
+HALU = 1: INC = 8: DEC = 9
+For LALU = 0 To 255
+' HERE AS INC NO CARRY - - ADD ALUOP - - OF *add sub and or adc ADCC sbc SBCC xor cp
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU + HALU: PE = PEW: ALU(INC,LALU,HALU) = PE
+RESF = PE And (128 + 32 + 8) ' COPY BIT 7(S),5 AND 3
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+PE = ((LALU And 15) + (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SO SET H
+'!!! AS TESTED IN SPECTACULATOR HERE HCARRY IS STRICT LOW NIB 4BIT ALU CARRY IN ADD CASE
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 0 And S3 = 128 Then RESF = RESF + 4 'SAME ++SIGNS AND RESULT -NOT
+If S1 = 128 And S2 = 128 And S3 = 0 Then RESF = RESF + 4 'SAME --SIGNS AND RESULT +NOT
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For addition, operands with different signs never cause overflow. When adding operands with similar signs
+'and the result contains a different sign, the Overflow Flag is set
+ALUF(INC,LALU,HALU) = RESF
+' HERE IS DEC NO CARRY - - SUB ALUOP - - OF add *sub and or adc ADCC sbc SBCC xor cp
+'| 7 6 5 4 3 2 1 0 |
+'| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
+PEW = LALU - HALU: PE = PEW: ALU(DEC,LALU,HALU) = PE ' SUB AND WRITE
+RESF = (PE And (128 + 32 + 8)) + 2 ' COPY BIT 7(S),5 AND 3, AND SET N
+'For ADD instructions, N is cleared to 0. For SUB instructions, N is set to 1.
+If PE = 0 Then RESF = RESF + 64 ' SET Z
+PE = ((LALU And 15) - (HALU And 15)): If PE > 15 Then RESF = RESF + 16 'HAVE LOW NIBBLE ALU CARRY SET,SO SET H, SAME AS ADD
+S1 = LALU And 128: S2 = HALU And 128: S3 = PEW And 128 'GET ALL SIGNS
+If S1 = 0 And S2 = 128 And S3 = 128 Then RESF = RESF + 4 'SIGNS UNEQ AND + PRODUCE - SO SET OVF
+If S1 = 128 And S2 = 0 And S3 = 0 Then RESF = RESF + 4 'SIGNS UNEQ AND - PRODUCE + SO SET OVF
+'The Parity/Overflow (P/V) Flag is set to a specific state depending on the operation being performed.
+'For subtraction, overflow can occur for operands of unalike signs. Operands of alike signs never cause overflow
+'The minuend sign has changed from a positive to a negative VS FIRST VALUE , resulting in an incorrect difference; the Overflow Flag is set.
+ALUF(DEC,LALU,HALU) = RESF
+Next
+' - - - - - - 

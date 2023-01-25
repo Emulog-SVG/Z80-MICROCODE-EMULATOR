@@ -1,0 +1,386 @@
+' - - ALLOCATE CHUNKS GRANULAR BY BYTES
+PSPP=GETPTR(256*192,31) ' LUT PERPIXEL SIGNALS TO BLUR TO CHANGE FX MODE
+PCLIM=GETPTR(16384*2,31) ' LUT FINAL INT LUMA LIMITER TO 255, IS DIVIDED BY DIVS
+PPLIM=GETPTR(16384*2,31) ' LUT PATTERN LUMA LIMITER, IS DIVIDED BY DIVF
+PMLIM=GETPTR(16384*2,31) ' LUT PATTERN LESS LUMA LIMITER, IS DIVIDED BY DIVM
+PPTOC=GETPTR(16*8,31) ' LUT RGB48 OF ZX COLOURS, INKS
+PPTOL=GETPTR(256*8,31) ' LUT 8PIX BYTE TO 8BYTE OF 0/255 VALUE SEQ FIR PCVZ
+PPQM=GETPTR(16*16*16*16*8,31) ' LUT QUAD 4BPP RGB48 SUMM, DIVIDED BY DIVD
+PQPX=GETPTR(4096*8,31) ' REPACK OF ZX SCR TO 4BPP FORMAT VIA PQPL LUT
+PQPL=GETPTR(128*2*256*4,31) ' LUT CVT ATTR/PIX(16BIT) TO 8X AS 4BPP, TO CATCH FLASHES NOT HANG INCREASE BY TWO 
+PBIG=GETPTR(128*2*512*4,31) ' LUT CVT ATTR+3*3PIX TO RGB32, TO CATCH FLASHES NOT HANG INCREASE BY TWO
+PSS=GETPTR(256*192*4+4096,31) ' RENDER SCREEN 256*192*RGBA
+TSS=GETPTR(256*192*4+4096,31) ' COPY PATTERN RESULT SCREEN 256*192*RGBA
+PPC=GETPTR(256*4,31) ' LUT RGB32 PAPERS
+PIC=GETPTR(256*4,31) ' LUT RGB32 INKS
+PYTOP=GETPTR(256*4,31) ' LUT CVT Y-POS TO PHY-PIX OFFSET FROM 16384(DEF BY PBASE) 
+PYTOA=GETPTR(256*4,31) ' LUT CVT Y-POS TO PHY-ATTR OFFSET FROM 22528(DEF BY ABASE)
+PBTOX=GETPTR(6144*4,31) ' LUT CVT OFFSET TO XPOS MAIN SCREEN
+PBTOY=GETPTR(6144*4,31) ' LUT CVT OFFSET TO YPOS MAIN SCREEN
+PBTOS=GETPTR(6144*4,31) ' LUT CVT OFFSET TO PHY OFFSET PIX
+PBTOT=GETPTR(6144*4,31) ' LUT CVT OFFSET TO PHY OFFSET ATTR
+PPAL=GETPTR(128*2*256*8*4,31) ' LUT CVT ATTR/PIX(16BIT) TO 8X AS RGB32, TO CATCH FLASHES NOT HANG INCREASE BY TWO
+PCVZ=GETPTR(256*192,31) ' BYTEPTR LINERIAZED 256*192 
+PBLR=GETPTR(256*192*8,31) ' U64PTR SIGNAL BYTES TO EXTRA BLUR AFTER PATTERN CHECK VIA PCVZ
+PNOI=GETPTR(256*192,31) ' BYTEPTR NOISE ADDER
+PREV=GETPTR(256,31) ' MIRRORED BYTES
+PPAT=GETPTR(512,31) ' BYTEPTR LUT FOR PATTERN SEEK
+
+
+
+'- - - - - HERE MERGED GEN_IC_PC_PTOC,PAL_QPL,BTO_YTO,PQM,CLIM,BIG,SPP
+Sub LUT_GFX_CREATE () Static
+'- - - - LUT ULA6912 USE BBASE=224, PIX=1/IC(ATTR) PIX=0/PC(ATTR), PTOC(4BPP)=UINT64 RGB
+'Sub GEN_01_IC_PC_PTOC Static
+Dim As Unsigned Long BBI(8), BRT, CLC, EH, ER, EG, EB:For CLC = 0 To 255
+If CLC And 64 Then BRT = 255 - BBASE: EH = 8 Else BRT = 0: EH = 0
+If CLC And 1 Then BBI(0) = BBASE + BRT: EB = 1 Else BBI(0) = 0: EB = 0
+If CLC And 2 Then BBI(1) = BBASE + BRT: ER = 4 Else BBI(1) = 0: ER = 0
+If CLC And 4 Then BBI(2) = BBASE + BRT: EG = 2 Else BBI(2) = 0: EG = 0
+If CLC And 8 Then BBI(3) = BBASE + BRT Else BBI(3) = 0
+If CLC And 16 Then BBI(4) = BBASE + BRT Else BBI(4) = 0
+If CLC And 32 Then BBI(5) = BBASE + BRT Else BBI(5) = 0
+*(PPC+CLC)=RGB(BBI(4), BBI(5), BBI(3)):*(PIC+clc)=RGB(BBI(1), BBI(2), BBI(0)):*(PPTOC+EH + ER + EG + EB) = (BBI(1)Shl 32)+(BBI(2) Shl 16)+BBI(0):Next
+' - - - - _NEWIMAGE/LUT/LUI VIA IC/PC PSET TO PAL(128*8/256),PACK 8PIX AS 4BPP TO QPL(ATTR(0..127)*PIX(0..255))=UINT32
+'Sub GEN_02_PAL_QPL () Static
+Dim As Unsigned Long TI, PPL, DDT, INKC, PAPC, SHC, CURC, PG, PB, PR, RES,DX,MSK:Dim As Unsigned Long Ptr LP
+Dim As ULongINT Ptr WU1:Dim As ULongINT WF' GOT HERE PPTOL FILL VIA DDT AND BIT SCAN
+Dim As Unsigned Byte Ptr WR
+Dim As Unsigned Byte MIR
+LP=PPAL:TI = 0:WU1=PPTOL:WR=PREV
+For PPL = 0 To 1023 Step 8:
+For DDT = 0 To 255:
+INKC = *(PIC +(PPL SHR 3)): PAPC = *(PPC+(PPL SHR 3)):SHC=0:MSK=1:WF=0:MIR=0
+For DX=0 To 7 :
+WF SHL= 8:MIR Shl= 1
+If DDT And MSK Then CURC = INKC:WF+=255:MIR+=1 Else CURC = PAPC
+MSK*=2:*(LP+7-DX)=CURC: PR = CURC Shr 16 And 255: PG = CURC Shr 8 And 255: PB = CURC And 255
+If PR = 0 Then RES = 0 Else If PR = 255 Then RES = 12 Else RES = 4
+If PG = 0 Then Else If PG = 255 Then RES = RES Or 10 Else RES = RES Or 2
+If PB = 0 Then Else If PB = 255 Then RES = RES Or 9 Else RES = RES Or 1
+SHC = (SHC Shr 4):SHC = SHC Or (RES SHL 28):
+Next:
+'Print DDT;" ";MIR;", ";
+'*(WR+DDT)=MIR:
+*(WR+DDT)=DDT:
+*(PQPL+TI) = SHC:
+*(WU1+DDT)=WF
+LP+=8:TI+=1:Next: Next
+'SLEEP
+'- - - - LUT OFFSET X,Y AND PAL X,Y BTOX/Y/S/T(0..6143)=UINT32, ALSO CONVERT Y YTOP/A(0..191)=UINT32(0..65535) FOR PIX AND ATTR
+'Sub GEN_03_BTO_YTO () Static
+Dim As Unsigned Long TERT, TVER, VER, TMPY, TMPA, YCNT, HOR, ADX
+ADX = 0: For TERT = 0 To 2: For TVER = 0 To 7: For VER = 0 To 7
+TMPY = PBASE + TERT * 2048 + TVER * 32 + VER * 256: TMPA = ABASE + TERT * 256 + TVER * 32:*(PYTOP+YCNT) = TMPY: *(PYTOA+YCNT) = TMPA:YCNT = YCNT + 1
+For HOR = 0 To 31:*(PBTOS+ADX) = TMPY + HOR:*(PBTOT+ADX) = TMPA + HOR:*(PBTOX+ADX) = HOR * 8:*(PBTOY+ADX) = TERT * 64 + TVER * 8 + VER: ADX = ADX + 1
+Next: Next: Next: Next
+' - - - - LUT 4BPP*4 TO COLOUR SUMM/DIVD PQM(0..65535)=UINT64 RGB
+'Sub GEN_04_PQM () Static
+Dim As Unsigned Long C1, C2, C3, C4 :Dim As ULongInt QMX
+TI = 0: For C1 = 0 To 15: For C2 = 0 To 15: For C3 = 0 To 15: For C4 = 0 To 15
+QMX = *(PPTOC+C4) + *(PPTOC+C3) + *(PPTOC+C2) + *(PPTOC+C1):ER = QMX SHR 32 And 65535: EG = QMX SHR 16 And 65535: EB = QMX And 65535
+ER = ER / DIVD: EG = EG / DIVD: EB = EB / DIVD: 
+QMX = ER SHL 32 Or EG SHL 16 Or EB: *(PPQM+TI) = QMX: TI = TI + 1:Next: Next: Next: Next
+'- - - - LUT VIA DIVS FOR LUMINOSITY CLIM(0..4095)=UINT16, USED BY _RGB SUBSTITUTION FOR SPEED
+'Sub GEN_05_CLIM Static
+Dim As UShort UC1,UC2:Dim As UShort Ptr XLP,YLP,MLP
+XLP=PCLIM:YLP=PPLIM:MLP=PMLIM:For UC1 = 0 To 16383: 
+UC2=UC1/DIVS:If UC2 < 256 Then *(XLP) = UC2 Else *(XLP) = 255
+UC2=UC1/DIVF:If UC2 < 256 Then *(YLP) = UC2 Else *(YLP) = 255
+UC2=UC1/DIVM:If UC2 < 256 Then *(MLP) = UC2 Else *(MLP) = 255
+XLP+=1:YLP+=1:MLP+=1:Next
+' - - - LUT FOR BLUR VIA IC/PC,DIVD/S,CLIM FOR 3*3 PIX RGB32, BIG(128*(3BPP*3BPP*3BPP=512))=UINT32
+'Sub GEN_06_BIG () Static
+Dim As Unsigned Long IBG, GA, GP, TR1, TR2, TR3, TG1, TG2, TG3, TB1, TB2, TB3
+IBG = 0: For GA = 0 To 127: For GP = 0 To 511:If GP And 16 Then C1 = 1 Else C1 = 0
+C2 = (GP And 1) + ((GP Shr 1) And 1) + ((GP SHR 2) And 1) + ((GP SHR 3) And 1) + ((GP SHR 5) And 1) + ((GP SHR 6) And 1) + ((GP SHR 7) And 1) + ((GP SHR 8) And 1)
+TR1 = (((*(PPC+GA) Shr 16)) And 255): TG1 = ((*(PPC+GA) Shr 8) And 255): TB1 = *(PPC+GA) And 255
+TR2 = (((*(PIC+GA) Shr 16)) And 255): TG2 = ((*(PIC+GA) Shr 8) And 255): TB2 = *(PIC+GA) And 255
+TR3 = TR1 * (8 - C2): TG3 = TG1 * (8 - C2): TB3 = TB1 * (8 - C2)
+TR3 = TR3 + (TR2 * C2): TG3 = TG3 + (TG2 * C2): TB3 = TB3 + (TB2 * C2)
+TR3 = TR3 / DIVD: TG3 = TG3 / DIVD: TB3 = TB3 / DIVD
+If C1 Then TR3 = TR3 + TR2:TG3 = TG3 + TG2:TB3 = TB3 + TB2 Else TR3 = TR3 + TR1:TG3 = TG3 + TG1:TB3 = TB3 + TB1
+TR3 = *(PCLIM+TR3): TG3 = *(PCLIM+TG3): TB3 = *(PCLIM+TB3):*(PBIG+IBG) = (TR3 Shl 16) + (TG3  Shl 8) + TB3: IBG+=1:Next: Next
+' - - - - GENERATE PERPIXEL FX SIGNALING FOR BLURMOD
+'Sub GEN_07_SPP () STATIC
+Dim As Long SQ1,SQ2,SQ3,SQ4,SQ5:SQ5=0:For SQ1=0 TO 255 STEP 8:For SQ2=0 TO 191 STEP 8:*(PSPP+SQ2*256)=2:*(PSPP+SQ2*256+256*7)=2
+For SQ3=1 TO 6:For SQ4=1 TO 6:*(PSPP+SQ1+SQ2*256+SQ3+SQ4*256)=1:Next:Next:If (SQ5 And 1)=0 Then *(PSPP+SQ1+SQ2*256+256+1)=3
+Next:SQ5+=1:Next:End Sub
+'- - - - - - - - - -
+'- - - - ' VIA P/ABASE CONVERT 6912 TO UINT64/16*4BPP TO QPX, SHIFTED R/DW 1 PIX, SCREEN(18*16,192+4)
+Sub SCRPACK () Static
+Dim As Unsigned Long TI, C1, C2, TERT, VLY, VLA, VLX:Dim As ULongInt v1,v2,v3,v4,v5,v6:Dim As ULongInt Ptr q1,q2,q3,q4:Dim As ULong Ptr T1,T2,T3,T4
+C1 = PBASE: C2 = ABASE :V2=0:Q3=PQPX+18:  For TERT = 0 To 2: For VLY = 0 To 7: For VLA = 0 To 7: For VLX = 0 To 31 Step 8:q1=PMEM+C1:V3=*Q1:Q2=PMEM+C2:V4=*Q2
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*Q3 = V2 + (V1 Shr 4): V2 = (V1 Shl 60):Q3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*Q3 = V2 + (V1 Shr 4): V2 = (V1 Shl 60):Q3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*Q3 = V2 + (V1 Shr 4): V2 = (V1 Shl 60):Q3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V1 = ((*T1) SHL 32) + (*T2):*Q3 = V2 + (V1 Shr 4): V2 = (V1 Shl 60):Q3+=1
+C1 = C1 + 8: C2 = C2 + 8:  Next: *Q3 = V2: V2 = 0: Q3+=2: C2 = C2 - 32: C1 = C1 + 224:Next: C2 = C2 + 32: C1 = C1 - 2016:Next: C1 = C1 +1792:Next
+End Sub
+'- - - - - - - -
+' - - - SCALED SCRSHOW TEMP SUB
+Sub SCRSHOW () Static
+Dim As ULongInt SF1,SF2:Dim As ULongInt Ptr SU1,SU2:Dim As ULong Ptr SP1,SP2:Dim As ULong SQ1,SQ2
+For SQ1=0 To 6143:SP1=PPAL+(*(PMEM+*(PBTOT+SQ1)) And 255)*256*8+(*(PMEM+*(PBTOS+SQ1)) And 255)*8:SP2=ScreenPtr()+*(PBTOX+SQ1)*16+(*(PBTOY+SQ1)*16384)
+For SQ2=0 To 7:SU1=SP2+SQ2*4:SF1=*(SP1+SQ2):SF1+=(SF1 Shl 32):*SU1=SF1:*(SU1+1)=SF1:*(SU1+512)=SF1:*(SU1+513)=SF1:*(SU1+1024)=SF1:*(SU1+1025)=SF1:
+*(SU1+1536)=SF1:*(SU1+1537)=SF1:Next:Next:End SUb
+'- - - - - - 
+' - - - GOOD SCALER DIRECT TO PTR
+Sub SCALE (P3 As ULongInt Ptr) Static 
+Dim As ULongInt X,Y:Dim As ULong Ptr p1:Dim As ULongInt w1:Dim As ULongInt Ptr p2 
+p1=PSS+8:ScreenLock():For y =0 To 191:p2=P3+(y*2048):For x=0 To 255:w1=*p1 Or(*p1 Shl 32):p1+=1:*p2=w1:p2+=1:*p2=w1:
+p2+=511:*p2=w1:p2+=1:*p2=w1:p2+=511:*p2=w1:p2+=1:*p2=w1:p2+=511:*p2=w1:p2+=1:*p2=w1:p2-=511*3+2:Next:Next:ScreenUnLock():End Sub
+' - - - - - - - - - -
+' - - - - BLUR IMAGE, GOOD OPTIMIZED 5580 FPS, VIA SCRPACK/PQM/CLIM/PTOC
+Sub SCRBLUR () Static 
+Dim As Unsigned Long TI, RY, VLX, C2, HOR,XHOR:Dim As Unsigned Long Ptr Q1:Dim As ULongInt Ptr Q2,Q3:Dim As ULongInt V1,V2,V3,V4,V5,V6,V7
+SCRPACK:Q2=PQPX:For RY = 0 To 191:V1 = *Q2: V4 = *(Q2+1): V2 = *(Q2+18): V5 = *(Q2+19): V3 = *(Q2+36): V6 = *(Q2+37):VLX = 16:Q1=PSS+(7+RY * 256):Q3=Q2+2:For HOR = 1 To 256 Step 2
+V7 = *(PPQM+((V1 Shr 48) And 65520 Or (V2 Shr 60)))+ *(PPQM+((V3 Shr 48) And 65520 Or ((V2 Shr 52) And 15)))+ *(PPTOC+((V2 Shr 56) And 15))
+Q1+=1:*Q1 = (*(PCLIM+((V7 Shr 32) And 65535))Shl 16) + (*(PCLIM+((V7 Shr 16) And 65535))Shl 8) + *(PCLIM+(V7 And 65535))
+V1 = (V1 Shl 4) Or (V4 Shr 60):V4 = (V4 Shl 4):V2 = (V2 Shl 4) + (V5 Shr 60):V5 = (V5 Shl 4):V3 = (V3 Shl 4) + (V6 Shr 60):V6 = (V6 Shl 4) 
+V7 = *(PPQM+((V1 Shr 48) And 65520 Or (V2 Shr 60)))+ *(PPQM+((V3 Shr 48) And 65520 Or ((V2 Shr 52) And 15)))+ *(PPTOC+((V2 Shr 56) And 15))
+Q1+=1:*Q1 = (*(PCLIM+((V7 Shr 32) And 65535))Shl 16) + (*(PCLIM+((V7 Shr 16) And 65535))Shl 8) + *(PCLIM+(V7 And 65535))
+V1 = (V1 Shl 4) Or (V4 Shr 60):V4 = (V4 Shl 4):V2 = (V2 Shl 4) + (V5 Shr 60):V5 = (V5 Shl 4):V3 = (V3 Shl 4) + (V6 Shr 60):V6 = (V6 Shl 4):VLX = VLX - 2
+If VLX = 0 Then V4 = *(Q3): V5 = *(Q3+18): V6 = *(Q3+36):Q3+=1:VLX = 16
+Next:Q2+=18:Next:End Sub
+' - - - - - - - - - -
+' - - - - MORE OPTIMIZED VS SCRBLUR, 7273 FPS, VIA SCRPACK AND BIG/QPL/QPX/MEM/SPP, WITH 6*6 DIRECT LUT PIXELS PART
+Sub SCRBLURMOD () Static 
+Dim As ULongINT Ptr Q1,Q2:Dim As ULongInt X1,X2,X3,X4,X5:Dim As Unsigned Long RX,RY,TY,VLX,VLA,HOR,C5,D1,D4,D8,C6,VX:Dim As Unsigned Long PTR P1,R1,R2,BG1,BG2
+Dim As Unsigned Byte Ptr SC,PM1,PM4,P2:Dim As ULongInt V1,V2,V3,V4,V5,V6,V7
+SCRPACK:C5=1:C6=0:SC=PSPP:Q1=PQPX:For RY = 0 To 191:V1 = *Q1: V4 = *(Q1+1): V2 = *(Q1+18): V5 = *(Q1+19): V3 = *(Q1+36): V6 = *(Q1+37):VLX = 16: Q2=Q1+2:P1=PSS+(7 + RY * 256)
+    If *SC=2 Then
+    SC+=256:For HOR = 1 To 256 Step 2
+      V7 = *(PPQM+(((V1 Shr 48) And 65520) + (V2 Shr 60)))+ *(PPQM+(((V3 Shr 48) And 65520) + ((V2 Shr 52) And 15)))+ *(PPTOC+((V2 Shr 56) And 15))
+      P1+=1:*P1= (*(PCLIM+((V7 Shr 32) And 65535))Shl 16) + (*(PCLIM+((V7 Shr 16) And &hFFFF))Shl 8) + *(PCLIM+(V7 And &hFFFF))
+      V1 = (V1 Shl 4) + (V4 Shr 60):V4 = (V4 Shl 4): V2 = (V2 Shl 4) + (V5 Shr 60):V5 = (V5 Shl 4): V3 = (V3 Shl 4) + (V6 Shr 60): V6 = (V6 Shl 4)
+      V7 = *(PPQM+(((V1 Shr 48) And 65520) + (V2 Shr 60)))+ *(PPQM+(((V3 Shr 48) And 65520) + ((V2 Shr 52) And 15)))+ *(PPTOC+((V2 Shr 56) And 15))
+      P1+=1:*P1= (*(PCLIM+((V7 Shr 32) And 65535))Shl 16) + (*(PCLIM+((V7 Shr 16) And &hFFFF))Shl 8) + *(PCLIM+(V7 And &hFFFF))
+      V1 = (V1 Shl 4) + (V4 Shr 60): V2 = (V2 Shl 4) + (V5 Shr 60): V3 = (V3 Shl 4) + (V6 Shr 60): VLX = VLX - 2
+      If VLX = 0 Then V4 = *(Q2): V5 = *(Q2+18): V6 = *(Q2+36):Q2+=1:VLX = 16 Else V4 = (V4 Shl 4): V5 = (V5 Shl 4): V6 = (V6 Shl 4)
+    Next
+    Else 
+    For HOR = 1 To 256
+      If *SC>0 Then
+      If *SC=3 Then  
+      RX=HOR Shr 3:TY=RY-1:D1=*(PYTOP+TY)+RX:D4=D1+1:PM1=PMEM+D1:PM4=PM1+1:p2=PMEM + *(PYTOA+TY)+ RX:D8=(RX Shl 3)+8:BG1=PBIG+((*p2) Shl 9):BG2=PBIG+((*(p2+1)) Shl 9) 
+      X4 = (*PM1 Shl 56) + (*(PM1 + 256)Shl 48) + (*(PM1 + 512)Shl 40) + (*(PM1 + 768)Shl 32) + (*(PM1 + 1024)Shl 24) + (*(PM1 + 1280)Shl 16) + (*(PM1 + 1536)Shl 8) + *(PM1 + 1792) ' 7231
+      X5 = (*PM4 Shl 56) + (*(PM4 + 256)Shl 48) + (*(PM4 + 512)Shl 40) + (*(PM4 + 768)Shl 32) + (*(PM4 + 1024)Shl 24) + (*(PM4 + 1280)Shl 16) + (*(PM4 + 1536)Shl 8) + *(PM4 + 1792): ' 7146
+      For VLA = 0 To 5:R1=PSS+((RY+VLA)*256+D8):For VX=0 To 2
+          R1+=1:*R1 = *(BG1+((X4 Shr 61) + ((X4 Shr 50) And 56) + ((X4 Shr 39) And 448))):X4 Shl= 1:*(R1+8) = *(BG2+((X5 Shr 61) + ((X5 Shr 50) And 56) + ((X5 Shr 39) And 448))):X5 Shl= 1
+          R1+=1:*R1 = *(BG1+((X4 Shr 61) + ((X4 Shr 50) And 56) + ((X4 Shr 39) And 448))):X4 Shl= 1:*(R1+8) = *(BG2+((X5 Shr 61) + ((X5 Shr 50) And 56) + ((X5 Shr 39) And 448))):X5 Shl= 1
+          Next:X4 = (X4 Shl 2): X5 = (X5 Shl 2):Next
+       Else
+       EndIf
+      P1+=6:SC+=6:VLX-=6:HOR+=5:V1 = (V1 Shl 24) + (V4 Shr 40):V4 Shl= 24:V2 = (V2 Shl 24) + (V5 Shr 40):V5 Shl= 24:V3 = (V3 Shl 24) + (V6 Shr 40):V6 Shl= 24
+      Else
+      V7 = *(PPQM+(((V1 Shr 48) And 65520) + (V2 Shr 60))) + *(PPQM+(((V3 Shr 48) And 65520) + ((V2 Shr 52) And 15))) + *(PPTOC+((V2 Shr 56) And 15)) 
+      P1+=1:*P1= (*(PCLIM+((V7 Shr 32) And 65535))Shl 16) + (*(PCLIM+((V7 Shr 16) And &hFFFF))Shl 8) + *(PCLIM +(V7 And &hFFFF))
+      V1 = (V1 Shl 4) + (V4 Shr 60):V4 Shl= 4:V2 = (V2 Shl 4) + (V5 Shr 60):V5 Shl= 4:V3 = (V3 Shl 4) + (V6 Shr 60):V6 Shl= 4:SC+=1: VLX-=1
+      END If
+      If VLX = 0 Then V4 = *(Q2): V5 = *(Q2+18): V6 = *(Q2+36):Q2+=1:VLX = 16
+    Next
+    End If
+    Q1+=18:Next:End Sub
+' - - - - - - - - - -
+' - - - - SUPER 5*5 LUMIFY IMAGE AND PATTERNS, GOOD OPTIMIZED 3761 VS MOD/5580 FPS, VIA SCRPACK/PQM/CLIM/PTOC
+Sub SCRBLURMAX () Static 
+Dim As Unsigned Long TI, RY, VLX, HOR,XHOR,SL,SR,SU,SD,SM,SLU,SRU,SDL,SDR,SMM,SF,SA,SB,SC:
+Dim As Unsigned Long Ptr Q1:
+Dim As Unsigned BYTE Ptr SB1,SB2,SB3
+Dim As Unsigned Byte BT
+Dim As UShort WSA,WSF
+Dim As UShort Ptr PSEL
+Dim As ULongInt Ptr UB1,UB2,Q2,Q3,QTOL,QCVZ,QBLR:
+Dim As ULongInt UF,V1,V2,V3,V4,V5,V6,V7,V8,V9,V0,E1,E2,E3,E4,M,MF,ME,MF0,MF00,MF000,MFFF0,MFF,M0,TT
+Dim As Unsigned Long  C1, C2, TERT, VLY, VLA,MS:Dim As ULongInt Ptr Sq1,Sq2,Sq3,Sq4:Dim As ULong Ptr T1,T2,T3,T4
+QTOL=PPTOL:QCVZ=PCVZ:QBLR=PBLR
+:MFF=&HFF:M0=0
+C1 = PBASE: C2 = ABASE :V2=0:SQ3=PQPX+36:SB1=PREV' GOT BYTE MIRROR  
+For TERT = 0 To 2: 
+For VLY = 0 To 7: 
+For VLA = 0 To 7: 
+For VLX = 0 To 31 Step 8:
+Sq1=PMEM+C1:V3=*SQ1:V5=V3:SQ2=PMEM+C2:V4=*SQ2 ' HERE SCRPACK XY++1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*SQ3 = V2 + (V1 Shr 8): V2 = (V1 Shl 56):SQ3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255))::V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*SQ3 = V2 + (V1 Shr 8): V2 = (V1 Shl 56):SQ3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:V1 = ((*T1) SHL 32) + (*T2):*SQ3 = V2 + (V1 Shr 8): V2 = (V1 Shl 56):SQ3+=1
+T1=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):V3 Shr=8:V4 Shr=8:T2=PQPL+(((V4 And 255) Shl 8)+(V3 And 255)):::::::::::::::::::V1 = ((*T1) SHL 32) + (*T2):*SQ3 = V2 + (V1 Shr 8): V2 = (V1 Shl 56):SQ3+=1
+'*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1:*(QBLR)=M0:QBLR+=1 ' CLEAN PBLR
+
+BT=*(SB1+(V5 And MFF)):TT=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:
+BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT:TT Shl= 8:V5 Shr= 8:BT=*(SB1+(V5 And MFF)):TT+=BT
+*(QCVZ)=TT:QCVZ+=1' JUST COPY ZX SCREEN WITH MIRRORED BYTES
+C1 = C1 + 8: C2 = C2 + 8:  Next: *SQ3 = V2: V2 = 0: SQ3+=2: C2 = C2 - 32: C1 = C1 + 224:Next: C2 = C2 + 32: C1 = C1 - 2016:Next: C1 = C1 +1792:Next' DONE SCRPACK
+' HERE GO TRI-PIX PATTERN CATCH TO PBLR SIGNALS, CHANGE CLIM TO PLIM, HIGLIGHT PIX
+If PATF Then 
+SB1=PCVZ
+UB2=PBLR+257
+Q2=PCVZ:
+For VLY=0 To 189:' NOW 2445
+V1=*(Q2):V4=*(Q2+1):V2=*(Q2+4):V5=*(Q2+5):V3=*(Q2+8):V6=*(Q2+9):VLA=64 
+For VLX=0 To 255
+UF=*(PPAT+((V1 Shr  55) AND &B111000000)+((V2 SHR 58) And &B111000)+((V3 Shr 61)And &B111)) ' GET LUTTED DECISION
+If UF=0 Then TT=PCLIM
+If UF=1 Then TT=PPLIM
+If UF=2 Then TT=PMLIM
+*UB2=TT:UB2+=1
+V1=(V1 ShL 1)+(V4 ShR 63):V4 ShL= 1:V2=(V2 ShL 1)+(V5 ShR 63):V5 ShL= 1:V3=(V3 ShL 1)+(V6 ShR 63):V6 ShL= 1:VLA-=1:
+If VLA=0 Then VLA=64:V4=*(Q2+2):V5=*(Q2+6):V6=*(Q2+10):Q2+=1   
+Next
+Next
+Else
+EndIf
+Q2=PQPX:M=&HFFFF:MF=&HF:ME=&HFFFEFFFEFFFE:MF0=&HF0:MF00=&HF00:MF000=&HF000:MFFF0=&HFFF0:UB1=PBLR:SB3=PNOI
+For RY = 0 To 191' - - NOW 5*5 BLUR
+E1 = *(Q2): E3 = *(Q2+1):V1 = *(Q2+18): V4 = *(Q2+19):V2 = *(Q2+36): V5 = *(Q2+37):V3 = *(Q2+54): V6 = *(Q2+55):E2 = *(Q2+72): E4 = *(Q2+73):' 5 CACHE LINES OF 64B L2
+VLX = 16:Q1=PSS+(7+RY * 256):Q3=Q2+2:
+For HOR = 1 To 256 Step 4  
+V7=*(PPQM+((E1 Shr 48) And M))+*(PPQM+((E2 Shr 48) And M))+*(PPQM+((V1 Shr 48)And MF000)+((V1 Shr 36)And MF00)+((V2 Shr 56)And MF0)+((V2 Shr 44)And MF))
+V8=*(PPQM+((E1 Shr 44) And M))+*(PPQM+((E2 Shr 44) And M))+*(PPQM+((V1 Shr 44)And MF000)+((V1 Shr 32)And MF00)+((V2 Shr 52)And MF0)+((V2 Shr 40)And MF))
+V9=*(PPQM+((E1 Shr 40) And M))+*(PPQM+((E2 Shr 40) And M))+*(PPQM+((V1 Shr 40)And MF000)+((V1 Shr 28)And MF00)+((V2 Shr 48)And MF0)+((V2 Shr 36)And MF))
+V0=*(PPQM+((E1 Shr 36) And M))+*(PPQM+((E2 Shr 36) And M))+*(PPQM+((V1 Shr 36)And MF000)+((V1 Shr 24)And MF00)+((V2 Shr 44)And MF0)+((V2 Shr 32)And MF))
+V7+=*(PPQM+((E1 Shr 32)And MF000)+((V3 Shr 52)And MF00)+((V3 Shr 40)And MF0)+((E2 Shr 44)And MF))
+V8+=*(PPQM+((E1 Shr 28)And MF000)+((V3 Shr 48)And MF00)+((V3 Shr 36)And MF0)+((E2 Shr 40)And MF))
+V9+=*(PPQM+((E1 Shr 24)And MF000)+((V3 Shr 44)And MF00)+((V3 Shr 32)And MF0)+((E2 Shr 36)And MF))
+V0+=*(PPQM+((E1 Shr 20)And MF000)+((V3 Shr 40)And MF00)+((V3 Shr 28)And MF0)+((E2 Shr 32)And MF))
+V7=((V7 And ME) Shr 1)+*(PPQM+(((V1 Shr 44) And MFFF0) + ((V2 Shr 56)And MF)))+ *(PPQM+(((V3 Shr 44) And MFFF0) + ((V2 Shr 48) And MF)))
+V8=((V8 And ME) Shr 1)+*(PPQM+(((V1 Shr 40) And MFFF0) + ((V2 Shr 52)And MF)))+ *(PPQM+(((V3 Shr 40) And MFFF0) + ((V2 Shr 44) And MF)))
+V9=((V9 And ME) Shr 1)+*(PPQM+(((V1 Shr 36) And MFFF0) + ((V2 Shr 48)And MF)))+ *(PPQM+(((V3 Shr 36) And MFFF0) + ((V2 Shr 40) And MF)))
+V0=((V0 And ME) Shr 1)+*(PPQM+(((V1 Shr 32) And MFFF0) + ((V2 Shr 44)And MF)))+ *(PPQM+(((V3 Shr 32) And MFFF0) + ((V2 Shr 36) And MF)))
+V7+=*(PPTOC+((V2 Shr 52) And MF)):V8+=*(PPTOC+((V2 Shr 48) And MF)):V9+=*(PPTOC+((V2 Shr 44) And MF)):V0+=*(PPTOC+((V2 Shr 40) And MF))
+
+PSEL=*UB1
+'PSEL=*UB1'MS=*SB1:
+'If MS=0 Then PSEL=PCLIM
+'If MS=1 Then PSEL=PPLIM
+'If MS=2 Then PSEL=PMLIM 
+'TT=*SB3:SB3+=1:'PSEL+=TT
+UB1+=1:
+SA=(*(PSEL+((V7 Shr 32) And M))Shl 16) + (*(PSEL+((V7 Shr 16) And M))Shl 8) + *(PSEL+(V7 And M))
+PSEL=*UB1'MS=*SB1:
+'If MS=0 Then PSEL=PCLIM
+'If MS=1 Then PSEL=PPLIM
+'If MS=2 Then PSEL=PMLIM 
+'TT=*SB3:SB3+=1:'PSEL+=TT
+UB1+=1:
+SB=(*(PSEL+((V8 Shr 32) And M))Shl 16) + (*(PSEL+((V8 Shr 16) And M))Shl 8) + *(PSEL+(V8 And M))
+PSEL=*UB1'MS=*SB1:
+'If MS=0 Then PSEL=PCLIM
+'If MS=1 Then PSEL=PPLIM
+'If MS=2 Then PSEL=PMLIM 
+'TT=*SB3:SB3+=1:'PSEL+=TT
+UB1+=1:
+SC=(*(PSEL+((V9 Shr 32) And M))Shl 16) + (*(PSEL+((V9 Shr 16) And M))Shl 8) + *(PSEL+(V9 And M))
+PSEL=*UB1'MS=*SB1:
+'If MS=0 Then PSEL=PCLIM
+'If MS=1 Then PSEL=PPLIM
+'If MS=2 Then PSEL=PMLIM 
+'TT=*SB3:SB3+=1:PSEL+=TT
+UB1+=1:
+SD=(*(PSEL+((V0 Shr 32) And M))Shl 16) + (*(PSEL+((V0 Shr 16) And M))Shl 8) + *(PSEL+(V0 And M))
+
+Q1+=1:*Q1 = SA:Q1+=1:*Q1 = SB:Q1+=1:*Q1 = SC:Q1+=1:*Q1 = SD
+
+E1 = (E1 Shl 16) + (E3 Shr 48):E3 = (E3 Shl 16):V1 = (V1 Shl 16) + (V4 Shr 48):V4 = (V4 Shl 16):V2 = (V2 Shl 16) + (V5 Shr 48):V5 = (V5 Shl 16):V3 = (V3 Shl 16) + (V6 Shr 48):V6 = (V6 Shl 16):E2 = (E2 Shl 16) + (E4 Shr 48):E4 = (E4 Shl 16):
+VLX = VLX - 4:If VLX = 0 Then VLX = 16:E3 = *(Q3):V4 = *(Q3+18): V5 = *(Q3+36): V6 = *(Q3+54):E4 = *(Q3+72):Q3+=1
+Next:
+Q2+=18:
+'Print 123
+'SLEEP
+Next:End Sub
+' - - - - - - - - - -
+
+' - - - DIRECT CODE HERE
+' - - NOISE FILL 
+For W2=0 To 49151:W1=Rnd*24:*(PNOI+W2)=W1:*(PBLR+W2)=PCLIM:Next
+' - - PATTERN HIGHLIGHT SELECTOR
+For W2=0 To 511:W1=Rnd*2:
+W3=0
+'If (W2 And &B010110010)=&B010100010 Then W3=2
+'If (W2 And &B010011010)=&B010001010 Then W3=2
+'If (W2 And &B000111010)=&B000101010 Then W3=2
+'If (W2 And &B010111000)=&B010101000 Then W3=2
+
+If W2=&B001100110 Then W3=2
+If W2=&B100001011 Then W3=2
+If W2=&B011001100 Then W3=2
+If W2=&B110100001 Then W3=2
+
+If W2=&B010101010 Then W3=2
+
+If W2=&B110101010 Then W3=2
+If W2=&B010101110 Then W3=2
+If W2=&B010101011 Then W3=2
+If W2=&B011101010 Then W3=2
+
+If W2=&B111101010 Then W3=2
+If W2=&B110101110 Then W3=2
+If W2=&B010101111 Then W3=2
+If W2=&B011101011 Then W3=2
+
+'If W2=&B Then W3=2
+'If W2=&B Then W3=2
+'If W2=&B Then W3=2
+'If W2=&B Then W3=2
+
+If W2=&B010100100 Then W3=2
+If W2=&B000100011 Then W3=2
+If W2=&B001001010 Then W3=2
+If W2=&B110001000 Then W3=2
+
+If W2=&B001001100 Then W3=2
+If W2=&B110000001 Then W3=2
+If W2=&B001100100 Then W3=2
+If W2=&B100000011 Then W3=2
+
+If W2=&B001100001 Then W3=2
+If W2=&B101000010 Then W3=2
+If W2=&B100001100 Then W3=2
+If W2=&B010000101 Then W3=2
+
+If W2=&B010100001 Then W3=2
+If W2=&B001100010 Then W3=2
+If W2=&B100001010 Then W3=2
+If W2=&B010001100 Then W3=2
+
+If W2=&B001100000 Then W3=2
+If W2=&B100000010 Then W3=2
+If W2=&B000001100 Then W3=2
+If W2=&B010000001 Then W3=2
+
+If W2=&B011100000 Then W3=2
+If W2=&B100100010 Then W3=2
+If W2=&B000001110 Then W3=2
+If W2=&B010001001 Then W3=2
+
+If W2=&B000001010 Then W3=2
+If W2=&B010001000 Then W3=2
+If W2=&B010100000 Then W3=2
+If W2=&B000100010 Then W3=2
+
+If W2=&B000101000 Then W3=2
+If W2=&B010000010 Then W3=2
+If W2=&B000101000 Then W3=2
+If W2=&B010000010 Then W3=2
+
+If W2=&B000100000 Then W3=2
+If W2=&B000000010 Then W3=2
+If W2=&B000001000 Then W3=2
+If W2=&B010000000 Then W3=2
+
+If W2=&B100100111 Then W3=2 ' BOULDER DASH TRY
+If W2=&B001001111 Then W3=2
+If W2=&B111001001 Then W3=2
+If W2=&B111100100 Then W3=2
+
+If W2=&B101101101 Then W3=1 ' LINE LOWER DIVF
+If W2=&B101100101 Then W3=1
+If W2=&B101001101 Then W3=1
+If W2=&B111000111 Then W3=1
+If W2=&B101000111 Then W3=1
+If W2=&B111000101 Then W3=1
+If W2=&B111101111 Then W3=1
+*(PPAT+W2)=W3:
+Next
+Cls
