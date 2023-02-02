@@ -1,9 +1,5 @@
 # Z80-MICROCODE-EMULATOR
-Emulate z80 with microcode, 
-  single t-state stepping, 
-  written in FreeBasic for AMD64
-Early stage version 0.10a, initial working loop, 
-  all microcode set, alu LUTs all set, 
-  6912 image FX filter v2.1,
-  yet no interrupts, iorq, 
-  no optimizations applied
+Per-cycle z80 microcoded emulation, 320 MHz @5700G. 
+Version 0.10d, working jumptable loop. 
+Image FX filter v2.1 for 6912. 
+Yet no interrupts, IORQ devices. 
