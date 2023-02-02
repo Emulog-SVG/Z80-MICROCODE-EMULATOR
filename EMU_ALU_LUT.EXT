@@ -1,4 +1,169 @@
+
+Sub SHOWINFO()
+
+SS4="MOS("+RIGHT("...."+Str(XPOFF),5)+")"
+SS8="UOP="+RIGHT("...."+Str(X.UOP),3)
+SS6="X.TAK="+Right("    "+Str(X.TAK),5)+"::"
+SS9=LEFT("                                                          ",32)
+If X.UOP=IUAPCI Then SS9=RIGHT("........................."+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" ",32)
+If X.UOP=IUTRD Then SS9=RIGHT("........................."+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
+If X.UOP=IUFET Then SS9=RIGHT("....................READ "+"("+Hex(X.ADDR,4)+")="+Hex(X.CODE,2)+" "+Mid$(O$,XMNEM(X.TEMP),XMLEN(X.TEMP)),32)  
+If X.UOP=IUDOW Then SS9=RIGHT("....................WRITE "+"("+Hex(X.ADDR,4)+")="+Hex(X.BUS,2)+"   ",32)  
+If X.UOP=IDONE Then SS9=RIGHT(".........................DONE: "+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" ",32)  
+If X.UOP=IUODEC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
+If X.UOP=IUOINC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
+If X.UOP=IUAIRIUF Then 
+SS9=".................................................."
+If X.F And XFS Then SS9+="sz1" Else SS9+="sz0"
+If X.F And XFZ Then SS9+="1-5h3-" Else SS9+="0-5h3-"
+If X.F And XF5 Then SS9+="1" Else SS9+="0"
+If X.F And XFH Then SS9+="1" Else SS9+="0"
+If X.F And XF3 Then SS9+="1-pnc-" Else SS9+="0-pnc-"
+If X.F And XFP Then SS9+="1" Else SS9+="0"
+If X.F And XFN Then SS9+="1" Else SS9+="0"
+If X.F And XFC Then SS9+="1" Else SS9+="0"
+
+SS9=RIGHT(SS9+" ",32)
+Else EndIf  
+
+
+SS7=Right(".................................."+Mid$(Q$,UOPN(X.UOP),UOPL(X.UOP)),14)+" "
+
+Print SS1;SS4;SS8;SS7;SS9;" ";
+
+Print "X.ADDR(";Hex$(X.ADDR,4);")-";
+Print "AF(";Hex$(X.A,2);Hex$(X.F,2);")-";
+Print "BC(";Hex$(X.B,2);Hex$(X.C,2);")-";
+Print "DE(";Hex$(X.D,2);Hex$(X.E,2);")-";
+Print "HL(";Hex$(X.H,2);Hex$(X.L,2);")-";
+Print "SP(";Hex$(X.S,2);Hex$(X.P,2);")-";
+Print "*SP(";Hex$(*(X.MEM+X.P+(X.S Shl 8)+1),2);Hex$(*(X.MEM+X.P+(X.S Shl 8)),2);")-";
+Print "WZ(";Hex$(X.W,2);Hex$(X.Z,2);") ";
+'Print "IR(";Hex$(X.I,2);Hex$(X.R,2);")-";
+'Print "IFF(";Hex$(X.IFF1,1);Hex$(X.IFF2,1);")-";
+
+Print
+If X.UOP=IDONE Or X.UOP=IEXT Then Sleep  
+
+'Print SS1;SS6;SS8;" ";SS5;SS2;SS3;SS4;SS7;SS9
+
+'Print " ";BIN(SEL Shr 24,8);" " 
+'Print RESULTS HERE '| 7 6 5 4 3 2 1 0 | '| S Z Y H X P N C |
+'Print "BUS(";Hex$(XBUS,2);")-";
+'Print "PC(";Hex$(XPC-1,4);")"';'-";
+'Print "SUBPC(";Hex$(XSUBST,4);")-";
+'Print "ACT-PC(";Hex$(XPC,4);")-";
+'Print "*HL(";Hex$(*(PMEM+XL+(XH Shl 8)),2);")-";
+'Print "T(";Hex$(XT,2);")-";
+'Print "*DE(";Hex$(*(PMEM+XE+(XD Shl 8)),2);")-";
+'Print "*X.ADDR(";Hex$(*(PMEM+X.ADDR),2);")-";
+'Print "IX(";Hex$(XXH,2);Hex$(XXL,2);")-";
+'Print "IY(";Hex$(XYH,2);Hex$(XYL,2);")-";
+'Print "ALU(";Hex$(XALU,2);")-";
+'Print "A(";BIN$(XA,8);")-";
+'Print "A(";HEX$(XA,2);")-";
+'Print "ADDER(";Hex$(XADDER,4);")-";
+'Print "IM(";Hex$(XIMM,2);")-";
+
+
+'If ISPAR Then ISPAR-=1:GoTo FORCEACT
+'If ISEXT=3 Then ISEXT=1:GoTo FORCEACT
+'If ISEXT=1 Then ISEXT=2:GoTo FORCEACT
+End Sub
+
+
+Sub EMUSETUP () Static
+PMEM=GETPTR(262144,1023) ' BYTEPTR MAIN Z80 MEMORY
+PMOS=GETPTR(32768*4,31) ' LONGPTR MICRO-OPS SEQUENCES 16743 AS FOUND 25-01-2023 ALMOST FULL Z80
+X.ROOT=GETPTR(256*7*4,31) ' U32OFFS ROOT INDEX
+' LUTS
+PADD=GETPTR(65536*2,31) ' BYTEPTR ADD/ADC FLAGs LUT, LEFT OPERAND IS LOW BYTE, RIGHT OPERAND IS HIGH BYTE AND EXTRA SHL NEEDED 
+PSUB=GETPTR(65536*2,31) ' BYTEPTR SUB/SBC FLAGs LUT, LEFT OPERAND IS LOW BYTE, RIGHT OPERAND IS HIGH BYTE AND EXTRA SHL NEEDED
+PAND=GETPTR(65536,31) ' BYTEPTR AND FLAGs LUT, L-LOW, R-HIGH, NO EXTRA SHL
+PXOR=GETPTR(65536,31) ' BYTEPTR XOR
+PPOR=GETPTR(65536,31) ' BYTEPTR OR 
+PPCP=GETPTR(65536,31) ' BYTEPTR CP 
+PRLC=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PRRC=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PRL=GETPTR(256*4,31) ' BYTEPTR NC/VAL-C/VAL AND NC/F-C/F QUAD BYTE
+PRR=GETPTR(256*4,31) ' BYTEPTR 
+PSLA=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PSRA=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PSLL=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PSRL=GETPTR(256*2,31) ' BYTEPTR TWO VALUE RESULT-FLAGS
+PDAA=GETPTR(65536*2,31) ' BYTEPTR VAL-FLG TO VAL-FLG 
+' PORT MAPS
+X.IORD=GETPTR(65536,31) ' BYTEPTR IORQ READS
+X.IOWR=GETPTR(65536,31) ' BYTEPTR IORQ WRITES
+' ALU LUT
+PFLAG=GETPTR(256,31) ' BYTEPTR PARITY LUT
+' FIRST U64 ROOT
+PROOT=GETPTR(256*7*8,31) ' U64PTR ROOT INDEX, CONTAIN PTRS TO PMOS DIRECTLY, NOT OFFSETS TO PMOS, MAIN,DD,FD,CB,DDCB,FDCB,ED
+
+MAIN=PROOT:DD=PROOT+XDD:FD=PROOT+XFD:CB=PROOT+XCB:ED=PROOT+XED:DDCB=PROOT+XDDCB:FDCB=PROOT+XFDCB
+WRLC=PRLC:WRRC=PRRC:QRL=PRL:QRR=PRR:WSLA=PSLA:WSRA=PSRA:WSLL=PSLL:WSRL=PSRL:WDAA=PDAA
+
+For F1=0 To 1791:*(PROOT+F1)=PMOS:Next' SETUP ALL ROOTS WITH NOP OPCODE 256*7
+For F1=0 To 65535:*(X.IORD+F1)=255:Next ' SET ALL PORTS READ TO &HFF
+
+X.CUROFF=XMAIN
+X.HALT=*(MAIN+118)
+X.CUR=*MAIN 
+'Print MAIN
+
+
+
+
+Dim As FILE Ptr filePtr:filePtr = fopen("ELITE.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
+'BBASE = 208: PBASE = 16384: ABASE = 22528 ' BASE BRIGHT FOR ATTR, BASE SCREEN ADDR AND ITS ATTR
+'DIVD = 4: DIVS = 3.5:DIVF=DIVS*.9:DIVM=DIVS*.8:PATF=1' PATF ENABLE PATTERNS, DIVD CUT LUMA SURR 3*3,DIVS CUT LUMA TOTAL NON PATT, DIVF LESSCUT LINE PATT, DIVM LESS CUT CHECKER PATT 
+'#Include "EMU_LUMIFY.EXT" ' ALL SUBS OF SCRBLUR SCRSHOW ETC HERE
+'LUT_GFX_CREATE ' A BUNCH OF LUT CREATION ALL-IN-ONE, 656 FPS AWHILE, CALL ONCE
+
+
+
+
+
+End Sub
+EMUSETUP
+
+'Dim Shared As Unsigned Long Q1,Q2,Q3,Q4,Q5,Q6,Q7,Q8,Q9
+'Dim Shared As Unsigned Byte Ptr B1,B2,B3,B4,B5,B6,B7,B8,B9,B0
+'Dim Shared As Unsigned Long Ptr P1,P2,P3,P4,P5,P6,P7,P8
+'Dim Shared As ULongInt Ptr U1,U2,U3,U4
+'Dim Shared As ULongInt Ptr X1,X2,X3,X4
+'Dim Shared As UShort W1,W2,W3,W4
+
+' - - -  NAMED PTR FOR ARRAY SUBST HERE
+'Dim Shared As Any Ptr IMG,PAL
+'Dim Shared As ULongInt Ptr PPQM,PQPX,PPTOC,PPTOL,PBLR
+'Dim Shared As Unsigned Long Ptr PPAL,PBIG,PPC,PIC,PQPL,PSS,TSS,PYTOP,PYTOA,PBTOX,PBTOY,PBTOS,PBTOT,PATF
+' PMCUR PTR TO @PMOS DATA, MICROOP CREATION CURRENT POS 
+' PCUR PTR TO @PMOS READING EXECUTION
+' EXTCUR POINTS TO TAILED UOPS 
+'Dim Shared As UShort Ptr PCLIM,PPLIM,PMLIM
+'Dim Shared As Unsigned Byte Ptr PSPP,PCVZ,PNOI,PREV,PPAT,PSHF
+
+' - - VARIABLE GO
+'Dim Shared As Unsigned Long BBASE, PBASE, ABASE,MOSX
+'Dim Shared As Single DIVD,DIVS,DIVF,DIVM
+
+'XTEST=3500000*600 'X.TAK=XTEST '-STATES TO RUN UNTIL'XCUROFF=XMAIN ' AWHILE'XPC=0'XD=11:XE=255:'XXH=1:XXL=0:'XA=&H80:
+'XS=32:XP=255:'ISINT=1'XF=&H33'XALUF=XFZ'XALUF=0'XB=3:XC=254:'XH=64:XL=0:
+
+Sub EMUGENLUT() Static
+
+Dim As Unsigned Long LALU, HALU, BCNT, ALUL,ALUR,DAAC,DAAH,DAAN,LDAA,HDAA
+Dim As Unsigned Byte PE, RESF
+Dim As Unsigned Integer PEW
+
+
+
 ' - - - - - ALL ALU LUTS DONE HERE - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+For T1=0 To 127 ' VALUE MUST GIVE NEXT+1 RESULT
+LREF(T1)=(T1+1) And 127
+LREF(T1+128)=128+((T1+1) And 127):NEXT
 
 '- - - - LUT PARITY FLAG PFLAG(0..255)=0/4, 4 IS BIT WEIGHT OF P/V IN F FLAG
 For T1 = 0 To 255: T2=T1:T3=0:
@@ -207,18 +372,195 @@ RESF+=(PE And (XF5+XF3))+*(PFLAG+PE) ' COPY BIT 5,3,S=0,H=0,N=0, LUT PARITY
 If PE=0 Then RESF+=XFZ ' SET Z 
 *(PSRL+(ALUL Shl 1))=PE ' VALUE LUT
 *(PSRL+(ALUL Shl 1)+1)=RESF ' FLAG LUT
-
 Next 
 
+' - - - UOP MNEMONICS - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Q$=""
+Q$+="0_ERROR ZERO_":Q$+="1_UABC_":Q$+="2_UADE_":Q$+="3_UAHL_":Q$+="4_UAWZ_":Q$+="5_UAAD_":Q$+="6_UASP_":Q$+="7_UAIX_":Q$+="8_UAIY_":Q$+="9_UAPCI_":Q$+="10_UFET_":Q$+="11_UAIRIUF_":
+Q$+="12_URALF_":Q$+="13_ULTRB_":Q$+="14_ULTRC_":Q$+="15_ULTRD_":Q$+="16_ULTRE_":Q$+="17_ULTRH_":Q$+="18_ULTRL_":Q$+="19_UALF_":Q$+="20_ULTRA_":Q$+="21_ULRBT_":Q$+="22_ULRCT_":Q$+="23_ULRDT_":
+Q$+="24_ULRET_":Q$+="25_ULRHT_":Q$+="26_ULRLT_":Q$+="27_UHALT_":Q$+="28_ULRAT_":Q$+="29_UBWR_":Q$+="30_UCWR_":Q$+="31_UDWR_":Q$+="32_UEWR_":Q$+="33_UHWR_":Q$+="34_ULWR_":Q$+="35_UOWR_":Q$+="36_UAWR_":
+Q$+="37_URCW_":Q$+="38_UWCW_":Q$+="39_WRITE UDOW_":Q$+="40_UNOP_":Q$+="41_READ UTRD _":Q$+="42_UTWR_":Q$+="43_ULSLT_":Q$+="44_ULSHT_":Q$+="45_ULW ERRATIC_":Q$+="46_ULWA_":Q$+="47_ULWT_":Q$+="48_ULZT_":
+Q$+="49_ULZN_":Q$+="50_ULW0_":Q$+="51_UWZI_":Q$+="52_UBCI_":Q$+="53_UDEI_":Q$+="54_UHLI_":Q$+="55_USPI_":Q$+="56_UADI_":Q$+="57_UIXI_":Q$+="58_UIYI_":Q$+="59_UADIWZ_":Q$+="60_UADIPC_":
+Q$+="61_UADD_":Q$+="62_UBCD_":Q$+="63_UBCDPV_":Q$+="64_UDED_":Q$+="65_UHLD_":Q$+="66_USPD_":Q$+="67_UWZD_":Q$+="68_UIXD_":Q$+="69_UIYD_":Q$+="70_ULDBC_":Q$+="71_ULDDE_":Q$+="72_ULDHL_":Q$+="73_ULDSP_":
+Q$+="74_ULDWZ_":Q$+="75_ULDPC_":Q$+="76_ULDIX_":Q$+="77_ULDIY_":Q$+="78_ULBCD_":Q$+="79_ULDED_":Q$+="80_ULHLD_":Q$+="81_ULWZD_":Q$+="82_ULSPD_":Q$+="83_ULPCD_":Q$+="84_ULIXD_":Q$+="85_ULIYD_":
+Q$+="86_UPFDD_":Q$+="87_UPFFD_":Q$+="88_UPFCB_":Q$+="89_UPFED_":Q$+="90_UPFDC_":Q$+="91_UPFFC_":Q$+="92_USLWR_":Q$+="93_USHWR_":Q$+="94_UPLWR_":Q$+="95_UPHWR_":Q$+="96_UXHWR_":
+Q$+="97_UXLWR_":Q$+="98_UYHWR_":Q$+="99_UYLWR_":Q$+="100_ULLRB_":Q$+="101_ULLRC_":Q$+="102_ULLRD_":Q$+="103_ULLRE_":Q$+="104_ULLRH_":Q$+="105_ULLRL_":Q$+="106_ULLRT_":Q$+="107_ULLRA_":Q$+="108_ULLXL_":
+Q$+="109_ULLXH_":Q$+="110_ULLYL_":Q$+="111_ULLYH_":Q$+="112_ULLPL_":Q$+="113_ULLPH_":Q$+="114_ULRIA_":Q$+="115_ULRRA_":Q$+="116_ULRBL_":Q$+="117_ULRCL_":Q$+="118_ULRDL_":Q$+="119_ULREL_":Q$+="120_ULRHL_":
+Q$+="121_ULRLL_":Q$+="122_ULRTL_":Q$+="123_ULRAL_":Q$+="124_ULRZL_":Q$+="125_ULRWL_":Q$+="126_ULXLL_":Q$+="127_ULXHL_":Q$+="128_ULYLL_":Q$+="129_ULYHL_":Q$+="130_ULRFT_":Q$+="131_ULXLT_":Q$+="132_ULXHT_":
+Q$+="133_ULYHT_":Q$+="134_ULYLT_":Q$+="135_ULTXH_":Q$+="136_ULTXL_":Q$+="137_ULTYH_":Q$+="138_ULTYL_":Q$+="139_ULBADD_":Q$+="140_ULCADD_":Q$+="141_ULDADD_":Q$+="142_ULEADD_":Q$+="143_ULHADD_":
+Q$+="144_ULLADD_":Q$+="145_ULTADD_":Q$+="146_ULAADD_":Q$+="147_ULXSADD_":Q$+="148_ULXPADD_":Q$+="149_ULXHADD_":Q$+="150_ULXLADD_":Q$+="151_ULYHADD_":Q$+="152_ULYLADD_":Q$+="153_ULBADC_":Q$+="154_ULCADC_":
+Q$+="155_ULDADC_":Q$+="156_ULEADC_":Q$+="157_ULHADC_":Q$+="158_ULLADC_":Q$+="159_ULTADC_":Q$+="160_ULAADC_":Q$+="161_ULXSADC_":Q$+="162_ULXPADC_":Q$+="163_ULXHADC_":Q$+="164_ULXLADC_":Q$+="165_ULYHADC_":
+Q$+="166_ULYLADC_":Q$+="167_ULBSUB_":Q$+="168_ULCSUB_":Q$+="169_ULDSUB_":Q$+="170_ULESUB_":Q$+="171_ULHSUB_":Q$+="172_ULLSUB_":Q$+="173_ULTSUB_":Q$+="174_ULASUB_":Q$+="175_ULXSSUB_":Q$+="176_ULXPSUB_":
+Q$+="177_ULXHSUB_":Q$+="178_ULXLSUB_":Q$+="179_ULYHSUB_":Q$+="180_ULYLSUB_":Q$+="181_ULBSBC_":Q$+="182_ULCSBC_":Q$+="183_ULDSBC_":Q$+="184_ULESBC_":Q$+="185_ULHSBC_":Q$+="186_ULLSBC_":Q$+="187_ULTSBC_":
+Q$+="188_ULASBC_":Q$+="189_ULXSSBC_":Q$+="190_ULXPSBC_":Q$+="191_ULXHSBC_":Q$+="192_ULXLSBC_":Q$+="193_ULYHSBC_":Q$+="194_ULYLSBC_":Q$+="195_UFQADD_":Q$+="196_UOINC_":Q$+="197_UODEC_":Q$+="198_UFQID_":
+Q$+="199_ULBAND_":Q$+="200_ULCAND_":Q$+="201_ULDAND_":Q$+="202_ULEAND_":Q$+="203_ULHAND_":Q$+="204_ULLAND_":Q$+="205_ULTAND_":Q$+="206_ULAAND_":Q$+="207_ULXSAND_":Q$+="208_ULXPAND_":Q$+="209_ULXHAND_":
+Q$+="210_ULXLAND_":Q$+="211_ULYHAND_":Q$+="212_ULYLAND_":Q$+="213_ULBXOR_":Q$+="214_ULCXOR_":Q$+="215_ULDXOR_":Q$+="216_ULEXOR_":Q$+="217_ULHXOR_":Q$+="218_ULLXOR_":Q$+="219_ULTXOR_":Q$+="220_ULAXOR_":
+Q$+="221_ULXSXOR_":Q$+="222_ULXPXOR_":Q$+="223_ULXHXOR_":Q$+="224_ULXLXOR_":Q$+="225_ULYHXOR_":Q$+="226_ULYLXOR_":Q$+="227_ULBOR_":Q$+="228_ULCOR_":Q$+="229_ULDOR_":Q$+="230_ULEOR_":Q$+="231_ULHOR_":
+Q$+="232_ULLOR_":Q$+="233_ULTOR_":Q$+="234_ULAOR_":Q$+="235_ULXSOR_":Q$+="236_ULXPOR_":Q$+="237_ULXHOR_":Q$+="238_ULXLOR_":Q$+="239_ULYHOR_":Q$+="240_ULYLOR_":Q$+="241_ULBCP_":Q$+="242_ULCCP_":
+Q$+="243_ULDCP_":Q$+="244_ULECP_":Q$+="245_ULHCP_":Q$+="246_ULLCP_":Q$+="247_ULTCP_":Q$+="248_ULACP_":Q$+="249_ULXSCP_":Q$+="250_ULXPCP_":Q$+="251_ULXHCP_":Q$+="252_ULXLCP_":Q$+="253_ULYHCP_":
+Q$+="254_ULYLCP_":Q$+="255_UFQSH_":Q$+="256_UORLC_":Q$+="257_UORRC_":Q$+="258_UORL_":Q$+="259_UORR_":Q$+="260_UOSLA_":Q$+="261_UOSRA_":Q$+="262_UOSLL_":Q$+="263_UOSRL_":Q$+="264_UORES_":Q$+="265_UOSET_":
+Q$+="266_ULTSADD_":Q$+="267_UOSADDC_":Q$+="268_UOBIT_":Q$+="269_UODAA_":Q$+="270_USEWZ_":Q$+="271_USEHL_":Q$+="272_USEIX_":Q$+="273_USEIY_":Q$+="274_SKIP6PO_":Q$+="275_SKIP6POZ_":Q$+="276_ECCZ_":Q$+="277_ECCNZ_":
+Q$+="278_ECCC_":Q$+="279_ECCNC_":Q$+="280_ECCPE_":Q$+="281_ECCPO_":Q$+="282_ECCM_":Q$+="283_ECCP_":Q$+="284_SWCCNZ_":Q$+="285_SWCCZ_":Q$+="286_SWCCNC_":Q$+="287_SWCCC_":Q$+="288_SWCCPE_":Q$+="289_SWCCPO_":
+Q$+="290_SWCCP_":Q$+="291_SWCCM_":Q$+="292_UOCPL_":Q$+="293_UOSCF_":Q$+="294_UOCCF_":Q$+="295_AF UEXA_":Q$+="296_RR UEXX_":Q$+="297_UDFF_":Q$+="298_USFF_":Q$+="299_UCFF_":Q$+="300_UXHD_":Q$+="301_UNWR_":
+Q$+="302_UTIO_":Q$+="303_UPOW_":Q$+="304_UFWR_":Q$+="305_UONEG_":Q$+="306_ULLRI_":Q$+="307_ULLRR_":Q$+="308_UFQIR_":Q$+="309_UFQIO_":Q$+="310_UORVN_":Q$+="311_ULANLL_":Q$+="312_ULTNLL_":
+Q$+="313_ULANLH_":Q$+="314_ULTNHL_":Q$+="315_UIM0_":Q$+="316_UIM1_":Q$+="317_UIM2_":Q$+="318_ULAQLD_":Q$+="319_QUIRK ULTCPQ_":Q$+="320_QUIRK UOQPV_":Q$+="321_CROSS UADDWZ_":Q$+="322_UTADDQI_":
+Q$+="323_UTADDQD_":Q$+="324_ULLRZ_":Q$+="325_DONE_":Q$+="326_PAR:_":Q$+="327_PIPE EXT:_":Q$+="!"
 
+T3=1 ' POS AT Q$
+T1=0:DO
+T2=0: ' SEEK OFFS
+T5=0:Do ' FIND NUMBER OF ENTRY
+'If Mid$(Q$,T3+T2,1)="_" Then T5=1:T4=Val$(Mid$(Q$,T3,T2)):Print T4;" "; Else T2+=1
+If Mid$(Q$,T3+T2,1)="_" Then T5=1:T4=Val$(Mid$(Q$,T3,T2)) Else T2+=1
+Loop While T5=0
+T3+=T2+1:' GET WORD POS
+T2=0:'SEEK OFFS
+T5=0:Do' FIND TEXT OF ENTRY
+'If Mid$(Q$,T2+T3,1)="_" Then T5=1:Print Mid$(Q$,T3,T2);" "; Else T2+=1
+If Mid$(Q$,T2+T3,1)="_" Then T5=1 Else T2+=1
+Loop While T5=0
+UOPN(T4)=T3:UOPL(T4)=T2
+T3+=T2+1
+If Mid$(Q$,T3,1)="!" Then T1=1
+Loop While T1=0 ' SEEK ALL
 
+' - - - Z80 MNEMONICS - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+' ORDER OF ADDITION MAIN=0,XDD=256,XFD=512,XCB=768,XED=1024,XDDCB=1280,XFDCB=1536
+O$="" ' MAIN
+O$+="NOP_":O$+="LD BC,**_":O$+="LD (BC),A_":O$+="INC BC_":O$+="INC B_":O$+="DEC B_":O$+="LD B,*_":O$+="RLCA_":O$+="EX AF,AF'_":O$+="ADD HL,BC_":O$+="LD A,(BC)_":O$+="DEC BC_":O$+="INC C_":O$+="DEC C_":O$+="LD C,*_":O$+="RRCA_":
+O$+="DJNZ *_":O$+="LD DE,**_":O$+="LD (DE),A_":O$+="INC DE_":O$+="INC D_":O$+="DEC D_":O$+="LD D,*_":O$+="RLA_":O$+="JR *_":O$+="ADD HL,DE_":O$+="LD A,(DE)_":O$+="DEC DE_":O$+="INC E_":O$+="DEC E_":O$+="LD E,*_":O$+="RRA_":
+O$+="JR NZ,*_":O$+="LD HL,**_":O$+="LD (**),HL_":O$+="INC HL_":O$+="INC H_":O$+="DEC H_":O$+="LD H,*_":O$+="DAA_":O$+="JR Z,*_":O$+="ADD HL,HL_":O$+="LD HL,(**)_":O$+="DEC HL_":O$+="INC L_":O$+="DEC L_":O$+="LD L,*_":O$+="CPL_":
+O$+="JR NC,*_":O$+="LD SP,**_":O$+="LD (**),A_":O$+="INC SP_":O$+="INC (HL)_":O$+="DEC (HL)_":O$+="LD (HL),*_":O$+="SCF_":O$+="JR C,*_":O$+="ADD HL,SP_":O$+="LD A,(**)_":O$+="DEC SP_":O$+="INC A_":O$+="DEC A_":O$+="LD A,*_":O$+="CCF_":
+O$+="LD B,B_":O$+="LD B,C_":O$+="LD B,D_":O$+="LD B,E_":O$+="LD B,H_":O$+="LD B,L_":O$+="LD B,(HL)_":O$+="LD B,A_":O$+="LD C,B_":O$+="LD C,C_":O$+="LD C,D_":O$+="LD C,E_":O$+="LD C,H_":O$+="LD C,L_":O$+="LD C,(HL)_":O$+="LD C,A_":
+O$+="LD D,B_":O$+="LD D,C_":O$+="LD D,D_":O$+="LD D,E_":O$+="LD D,H_":O$+="LD D,L_":O$+="LD D,(HL)_":O$+="LD D,A_":O$+="LD E,B_":O$+="LD E,C_":O$+="LD E,D_":O$+="LD E,E_":O$+="LD E,H_":O$+="LD E,L_":O$+="LD E,(HL)_":O$+="LD E,A_":
+O$+="LD H,B_":O$+="LD H,C_":O$+="LD H,D_":O$+="LD H,E_":O$+="LD H,H_":O$+="LD H,L_":O$+="LD H,(HL)_":O$+="LD H,A_":O$+="LD L,B_":O$+="LD L,C_":O$+="LD L,D_":O$+="LD L,E_":O$+="LD L,H_":O$+="LD L,L_":O$+="LD L,(HL)_":O$+="LD L,A_":
+O$+="LD (HL),B_":O$+="LD (HL),C_":O$+="LD (HL),D_":O$+="LD (HL),E_":O$+="LD (HL),H_":O$+="LD (HL),L_":O$+="HALT_":O$+="LD (HL),A_":O$+="LD A,B_":O$+="LD A,C_":O$+="LD A,D_":O$+="LD A,E_":O$+="LD A,H_":O$+="LD A,L_":O$+="LD A,(HL)_":O$+="LD A,A_":
+O$+="ADD A,B_":O$+="ADD A,C_":O$+="ADD A,D_":O$+="ADD A,E_":O$+="ADD A,H_":O$+="ADD A,L_":O$+="ADD A,(HL)_":O$+="ADD A,A_":O$+="ADC A,B_":O$+="ADC A,C_":O$+="ADC A,D_":O$+="ADC A,E_":O$+="ADC A,H_":O$+="ADC A,L_":O$+="ADC A,(HL)_":O$+="ADC A,A_":
+O$+="SUB A,B_":O$+="SUB A,C_":O$+="SUB A,D_":O$+="SUB A,E_":O$+="SUB A,H_":O$+="SUB A,L_":O$+="SUB A,(HL)_":O$+="SUB A,A_":O$+="SBC A,B_":O$+="SBC A,C_":O$+="SBC A,D_":O$+="SBC A,E_":O$+="SBC A,H_":O$+="SBC A,L_":O$+="SBC A,(HL)_":O$+="SBC A,A_":
+O$+="AND A,B_":O$+="AND A,C_":O$+="AND A,D_":O$+="AND A,E_":O$+="AND A,H_":O$+="AND A,L_":O$+="AND A,(HL)_":O$+="AND A,A_":O$+="XOR A,B_":O$+="XOR A,C_":O$+="XOR A,D_":O$+="XOR A,E_":O$+="XOR A,H_":O$+="XOR A,L_":O$+="XOR A,(HL)_":O$+="XOR A,A_":
+O$+="OR A,B_":O$+="OR A,C_":O$+="OR A,D_":O$+="OR A,E_":O$+="OR A,H_":O$+="OR A,L_":O$+="OR A,(HL)_":O$+="OR A,A_":O$+="CP A,B_":O$+="CP A,C_":O$+="CP A,D_":O$+="CP A,E_":O$+="CP A,H_":O$+="CP A,L_":O$+="CP A,(HL)_":O$+="CP A,A_":
+O$+="RET NZ_":O$+="POP BC_":O$+="JP NZ,**_":O$+="JP **_":O$+="CALL NZ,**_":O$+="PUSH BC_":O$+="ADD A,*_":O$+="RST 00H_":O$+="RET Z_":O$+="RET_":O$+="JP Z,**_":O$+="#CB_":O$+="CALL Z,**_":O$+="CALL **_":O$+="ADC A,*_":O$+="RST 08H_":
+O$+="RET NC_":O$+="POP DE_":O$+="JP NC,**_":O$+="OUT (**),A_":O$+="CALL NC,**_":O$+="PUSH DE_":O$+="SUB A,*_":O$+="RST 10H_":O$+="RET C_":O$+="EXX_":O$+="JP C,**_":O$+="IN A,(*)_":O$+="CALL C,**_":O$+="#DD_":O$+="SBC A,*_":O$+="RST 18H_":
+O$+="RET PO_":O$+="POP HL_":O$+="JP PO,**_":O$+="EX (SP),HL_":O$+="CALL PO,**_":O$+="PUSH HL_":O$+="AND A,*_":O$+="RST 20H_":O$+="RET PE_":O$+="JP (HL)_":O$+="JP PE,**_":O$+="EX DE,HL_":O$+="CALL PE,**_":O$+="#ED_":O$+="XOR A,*_":O$+="RST 28H_":
+O$+="RET P_":O$+="POP AF_":O$+="JP P,**_":O$+="DI_":O$+="CALL P,**_":O$+="PUSH AF_":O$+="OR A,*_":O$+="RST 30H_":O$+="RET M_":O$+="LD SP,HL_":O$+="JP M,**_":O$+="EI_":O$+="CALL M,**_":O$+="#FD_":O$+="CP *_":O$+="RST 38H_":
+' ORDER OF ADDITION XDD=256,XFD=512,XCB=768,XED=1024,XDDCB=1280,XFDCB=1536
+O$+="NOP_":O$+="LD BC,**_":O$+="LD (BC),A_":O$+="INC BC_":O$+="INC B_":O$+="DEC B_":O$+="LD B,*_":O$+="RLCA_":O$+="EX AF,AF'_":O$+="ADD IX,BC_":O$+="LD A,(BC)_":O$+="DEC BC_":O$+="INC C_":O$+="DEC C_":O$+="LD C,*_":O$+="RRCA_":
+O$+="DJNZ *_":O$+="LD DE,**_":O$+="LD (DE),A_":O$+="INC DE_":O$+="INC D_":O$+="DEC D_":O$+="LD D,*_":O$+="RLA_":O$+="JR *_":O$+="ADD IX,DE_":O$+="LD A,(DE)_":O$+="DEC DE_":O$+="INC E_":O$+="DEC E_":O$+="LD E,*_":O$+="RRA_":
+O$+="JR NZ,*_":O$+="LD IX,**_":O$+="LD (**),IX_":O$+="INC IX_":O$+="INC IXH_":O$+="DEC IXH_":O$+="LD IXH,*_":O$+="DAA_":O$+="JR Z,*_":O$+="ADD IX,IX_":O$+="LD IX,(**)_":O$+="DEC IX_":O$+="INC IXL_":O$+="DEC IXL_":O$+="LD IXL,*_":O$+="CPL_":
+O$+="JR NC,*_":O$+="LD SP,**_":O$+="LD (**),A_":O$+="INC SP_":O$+="INC (IX+*)_":O$+="DEC (IX+*)_":O$+="LD (IX+*),*_":O$+="SCF_":O$+="JR C,*_":O$+="ADD IX,SP_":O$+="LD A,(**)_":O$+="DEC SP_":O$+="INC A_":O$+="DEC A_":O$+="LD A,*_":O$+="CCF_":
+O$+="LD B,B_":O$+="LD B,C_":O$+="LD B,D_":O$+="LD B,E_":O$+="LD B,IXH_":O$+="LD B,IXL_":O$+="LD B,(IX+*)_":O$+="LD B,A_":O$+="LD C,B_":O$+="LD C,C_":O$+="LD C,D_":O$+="LD C,E_":O$+="LD C,IXH_":O$+="LD C,IXL_":O$+="LD C,(IX+*)_":O$+="LD C,A_":
+O$+="LD D,B_":O$+="LD D,C_":O$+="LD D,D_":O$+="LD D,E_":O$+="LD D,IXH_":O$+="LD D,IXL_":O$+="LD D,(IX+*)_":O$+="LD D,A_":O$+="LD E,B_":O$+="LD E,C_":O$+="LD E,D_":O$+="LD E,E_":O$+="LD E,IXH_":O$+="LD E,IXL_":O$+="LD E,(IX+*)_":O$+="LD E,A_":
+O$+="LD IXH,B_":O$+="LD IXH,C_":O$+="LD IXH,D_":O$+="LD IXH,E_":O$+="LD IXH,IXH_":O$+="LD IXH,IXL_":O$+="LD H,(IX+*)_":O$+="LD IXH,A_":O$+="LD IXL,B_":O$+="LD IXL,C_":O$+="LD IXL,D_":O$+="LD IXL,E_":O$+="LD IXL,IXH_":O$+="LD IXL,IXL_":O$+="LD L,(IX+*)_":O$+="LD IXL,A_":
+O$+="LD (IX+*),B_":O$+="LD (IX+*),C_":O$+="LD (IX+*),D_":O$+="LD (IX+*),E_":O$+="LD (IX+*),H_":O$+="LD (IX+*),L_":O$+="HALT_":O$+="LD (IX+*),A_":O$+="LD A,B_":O$+="LD A,C_":O$+="LD A,D_":O$+="LD A,E_":O$+="LD A,IXH_":O$+="LD A,IXL_":O$+="LD A,(IX+*)_":O$+="LD A,A_":
+O$+="ADD A,B_":O$+="ADD A,C_":O$+="ADD A,D_":O$+="ADD A,E_":O$+="ADD A,IXH_":O$+="ADD A,IXL_":O$+="ADD A,(IX+*)_":O$+="ADD A,A_":O$+="ADC A,B_":O$+="ADC A,C_":O$+="ADC A,D_":O$+="ADC A,E_":O$+="ADC A,IXH_":O$+="ADC A,IXL_":O$+="ADC A,(IX+*)_":O$+="ADC A,A_":
+O$+="SUB A,B_":O$+="SUB A,C_":O$+="SUB A,D_":O$+="SUB A,E_":O$+="SUB IXH_":O$+="SUB IXL_":O$+="SUB (IX+*)_":O$+="SUB A,A_":O$+="SBC A,B_":O$+="SBC A,C_":O$+="SBC A,D_":O$+="SBC A,E_":O$+="SBC A,IXH_":O$+="SBC A,IXL_":O$+="SBC A,(IX+*)_":O$+="SBC A,A_":
+O$+="AND A,B_":O$+="AND A,C_":O$+="AND A,D_":O$+="AND A,E_":O$+="AND IXH_":O$+="AND IXL_":O$+="AND (IX+*)_":O$+="AND A,A_":O$+="XOR A,B_":O$+="XOR A,C_":O$+="XOR A,D_":O$+="XOR A,E_":O$+="XOR IXH_":O$+="XOR IXL_":O$+="XOR (IX+*)_":O$+="XOR A,A_":
+O$+="OR A,B_":O$+="OR A,C_":O$+="OR A,D_":O$+="OR A,E_":O$+="OR IXH_":O$+="OR IXL_":O$+="OR (IX+*)_":O$+="OR A,A_":O$+="CP A,B_":O$+="CP A,C_":O$+="CP A,D_":O$+="CP A,E_":O$+="CP IXH_":O$+="CP IXL_":O$+="CP (IX+*)_":O$+="CP A,A_":
+O$+="RET NZ_":O$+="POP BC_":O$+="JP NZ,**_":O$+="JP **_":O$+="CALL NZ,**_":O$+="PUSH BC_":O$+="ADD A,*_":O$+="RST 00H_":O$+="RET Z_":O$+="RET_":O$+="JP Z,**_":O$+="#DDCB_":O$+="CALL Z,**_":O$+="CALL **_":O$+="ADC A,*_":O$+="RST 08H_":
+O$+="RET NC_":O$+="POP DE_":O$+="JP NC,**_":O$+="OUT (*),A_":O$+="CALL NC,**_":O$+="PUSH DE_":O$+="SUB A,*_":O$+="RST 10H_":O$+="RET C_":O$+="EXX_":O$+="JP C,**_":O$+="IN A,(*)_":O$+="CALL C,**_":O$+="#DD_":O$+="SBC A,*_":O$+="RST 18H_":
+O$+="RET PO_":O$+="POP IX_":O$+="JP PO,**_":O$+="EX (SP),IX_":O$+="CALL PO,**_":O$+="PUSH IX_":O$+="AND A,*_":O$+="RST 20H_":O$+="RET PE_":O$+="JP (IX)_":O$+="JP PE,**_":O$+="EX DE,HL_":O$+="CALL PE,**_":O$+="#ED_":O$+="XOR A,*_":O$+="RST 28H_":
+O$+="RET P_":O$+="POP AF_":O$+="JP P,**_":O$+="DI_":O$+="CALL P,**_":O$+="PUSH AF_":O$+="OR A,*_":O$+="RST 30H_":O$+="RET M_":O$+="LD SP,IX_":O$+="JP M,**_":O$+="EI_":O$+="CALL M,**_":O$+="#FD_":O$+="CP A,*_":O$+="RST 38H_":
+' ORDER OF ADDITION XFD=512,XCB=768,XED=1024,XDDCB=1280,XFDCB=1536
+O$+="NOP_":O$+="LD BC,**_":O$+="LD (BC),A_":O$+="INC BC_":O$+="INC B_":O$+="DEC B_":O$+="LD B,*_":O$+="RLCA_":O$+="EX AF,AF'_":O$+="ADD IY,BC_":O$+="LD A,(BC)_":O$+="DEC BC_":O$+="INC C_":O$+="DEC C_":O$+="LD C,*_":O$+="RRCA_":
+O$+="DJNZ *_":O$+="LD DE,**_":O$+="LD (DE),A_":O$+="INC DE_":O$+="INC D_":O$+="DEC D_":O$+="LD D,*_":O$+="RLA_":O$+="JR *_":O$+="ADD IY,DE_":O$+="LD A,(DE)_":O$+="DEC DE_":O$+="INC E_":O$+="DEC E_":O$+="LD E,*_":O$+="RRA_":
+O$+="JR NZ,*_":O$+="LD IY,**_":O$+="LD (**),IY_":O$+="INC IY_":O$+="INC IYH_":O$+="DEC IYH_":O$+="LD IYH,*_":O$+="DAA_":O$+="JR Z,*_":O$+="ADD IY,IY_":O$+="LD IY,(**)_":O$+="DEC IY_":O$+="INC IYL_":O$+="DEC IYL_":O$+="LD IYL,*_":O$+="CPL_":
+O$+="JR NC,*_":O$+="LD SP,**_":O$+="LD (**),A_":O$+="INC SP_":O$+="INC (IY+*)_":O$+="DEC (IY+*)_":O$+="LD (IY+*),*_":O$+="SCF_":O$+="JR C,*_":O$+="ADD IY,SP_":O$+="LD A,(**)_":O$+="DEC SP_":O$+="INC A_":O$+="DEC A_":O$+="LD A,*_":O$+="CCF_":
+O$+="LD B,B_":O$+="LD B,C_":O$+="LD B,D_":O$+="LD B,E_":O$+="LD B,IYH_":O$+="LD B,IYL_":O$+="LD B,(IY+*)_":O$+="LD B,A_":O$+="LD C,B_":O$+="LD C,C_":O$+="LD C,D_":O$+="LD C,E_":O$+="LD C,IYH_":O$+="LD C,IYL_":O$+="LD C,(IY+*)_":O$+="LD C,A_":
+O$+="LD D,B_":O$+="LD D,C_":O$+="LD D,D_":O$+="LD D,E_":O$+="LD D,IYH_":O$+="LD D,IYL_":O$+="LD D,(IY+*)_":O$+="LD D,A_":O$+="LD E,B_":O$+="LD E,C_":O$+="LD E,D_":O$+="LD E,E_":O$+="LD E,IYH_":O$+="LD E,IYL_":O$+="LD E,(IY+*)_":O$+="LD E,A_":
+O$+="LD IYH,B_":O$+="LD IYH,C_":O$+="LD IYH,D_":O$+="LD IYH,E_":O$+="LD IYH,IYH_":O$+="LD IYH,IYL_":O$+="LD H,(IY+*)_":O$+="LD IYH,A_":O$+="LD IYL,B_":O$+="LD IYL,C_":O$+="LD IYL,D_":O$+="LD IYL,E_":O$+="LD IYL,IYH_":O$+="LD IYL,IYL_":O$+="LD L,(IY+*)_":O$+="LD IYL,A_":
+O$+="LD (IY+*),B_":O$+="LD (IY+*),C_":O$+="LD (IY+*),D_":O$+="LD (IY+*),E_":O$+="LD (IY+*),H_":O$+="LD (IY+*),L_":O$+="HALT_":O$+="LD (IY+*),A_":O$+="LD A,B_":O$+="LD A,C_":O$+="LD A,D_":O$+="LD A,E_":O$+="LD A,IYH_":O$+="LD A,IYL_":O$+="LD A,(IY+*)_":O$+="LD A,A_":
+O$+="ADD A,B_":O$+="ADD A,C_":O$+="ADD A,D_":O$+="ADD A,E_":O$+="ADD A,IYH_":O$+="ADD A,IYL_":O$+="ADD A,(IY+*)_":O$+="ADD A,A_":O$+="ADC A,B_":O$+="ADC A,C_":O$+="ADC A,D_":O$+="ADC A,E_":O$+="ADC A,IYH_":O$+="ADC A,IYL_":O$+="ADC A,(IY+*)_":O$+="ADC A,A_":
+O$+="SUB A,B_":O$+="SUB A,C_":O$+="SUB A,D_":O$+="SUB A,E_":O$+="SUB IYH_":O$+="SUB IYL_":O$+="SUB (IY+*)_":O$+="SUB A,A_":O$+="SBC A,B_":O$+="SBC A,C_":O$+="SBC A,D_":O$+="SBC A,E_":O$+="SBC A,IYH_":O$+="SBC A,IYL_":O$+="SBC A,(IY+*)_":O$+="SBC A,A_":
+O$+="AND A,B_":O$+="AND A,C_":O$+="AND A,D_":O$+="AND A,E_":O$+="AND IYH_":O$+="AND IYL_":O$+="AND (IY+*)_":O$+="AND A,A_":O$+="XOR A,B_":O$+="XOR A,C_":O$+="XOR A,D_":O$+="XOR A,E_":O$+="XOR IYH_":O$+="XOR IYL_":O$+="XOR (IY+*)_":O$+="XOR A,A_":
+O$+="OR A,B_":O$+="OR A,C_":O$+="OR A,D_":O$+="OR A,E_":O$+="OR IYH_":O$+="OR IYL_":O$+="OR (IY+*)_":O$+="OR A,A_":O$+="CP A,B_":O$+="CP A,C_":O$+="CP A,D_":O$+="CP A,E_":O$+="CP IYH_":O$+="CP IYL_":O$+="CP (IY+*)_":O$+="CP A,A_":
+O$+="RET NZ_":O$+="POP BC_":O$+="JP NZ,**_":O$+="JP **_":O$+="CALL NZ,**_":O$+="PUSH BC_":O$+="ADD A,*_":O$+="RST 00H_":O$+="RET Z_":O$+="RET_":O$+="JP Z,**_":O$+="#FDCB_":O$+="CALL Z,**_":O$+="CALL **_":O$+="ADC A,*_":O$+="RST 08H_":
+O$+="RET NC_":O$+="POP DE_":O$+="JP NC,**_":O$+="OUT (*),A_":O$+="CALL NC,**_":O$+="PUSH DE_":O$+="SUB A,*_":O$+="RST 10H_":O$+="RET C_":O$+="EXX_":O$+="JP C,**_":O$+="IN A,(*)_":O$+="CALL C,**_":O$+="#DD_":O$+="SBC A,*_":O$+="RST 18H_":
+O$+="RET PO_":O$+="POP IY_":O$+="JP PO,**_":O$+="EX (SP),IY_":O$+="CALL PO,**_":O$+="PUSH IY_":O$+="AND A,*_":O$+="RST 20H_":O$+="RET PE_":O$+="JP (IY)_":O$+="JP PE,**_":O$+="EX DE,HL_":O$+="CALL PE,**_":O$+="#ED_":O$+="XOR A,*_":O$+="RST 28H_":
+O$+="RET P_":O$+="POP AF_":O$+="JP P,**_":O$+="DI_":O$+="CALL P,**_":O$+="PUSH AF_":O$+="OR A,*_":O$+="RST 30H_":O$+="RET M_":O$+="LD SP,IY_":O$+="JP M,**_":O$+="EI_":O$+="CALL M,**_":O$+="#FD_":O$+="CP A,*_":O$+="RST 38H_":
+' ORDER OF ADDITION XCB=768,XED=1024,XDDCB=1280,XFDCB=1536
+O$+="RLC B_":O$+="RLC C_":O$+="RLC D_":O$+="RLC E_":O$+="RLC H_":O$+="RLC L_":O$+="RLC (HL)_":O$+="RLC A_":O$+="RRC B_":O$+="RRC C_":O$+="RRC D_":O$+="RRC E_":O$+="RRC H_":O$+="RRC L_":O$+="RRC (HL)_":O$+="RRC A_":
+O$+="RL B_":O$+="RL C_":O$+="RL D_":O$+="RL E_":O$+="RL H_":O$+="RL L_":O$+="RL (HL)_":O$+="RL A_":O$+="RR B_":O$+="RR C_":O$+="RR D_":O$+="RR E_":O$+="RR H_":O$+="RR L_":O$+="RR (HL)_":O$+="RR A_":
+O$+="SLA B_":O$+="SLA C_":O$+="SLA D_":O$+="SLA E_":O$+="SLA H_":O$+="SLA L_":O$+="SLA (HL)_":O$+="SLA A_":O$+="SRA B_":O$+="SRA C_":O$+="SRA D_":O$+="SRA E_":O$+="SRA H_":O$+="SRA L_":O$+="SRA (HL)_":O$+="SRA A_":
+O$+="SLL B_":O$+="SLL C_":O$+="SLL D_":O$+="SLL E_":O$+="SLL H_":O$+="SLL L_":O$+="SLL (HL)_":O$+="SLL A_":O$+="SRL B_":O$+="SRL C_":O$+="SRL D_":O$+="SRL E_":O$+="SRL H_":O$+="SRL L_":O$+="SRL (HL)_":O$+="SRL A_":
+O$+="BIT 0,B_":O$+="BIT 0,C_":O$+="BIT 0,D_":O$+="BIT 0,E_":O$+="BIT 0,H_":O$+="BIT 0,L_":O$+="BIT 0,(HL)_":O$+="BIT 0,A_":O$+="BIT 1,B_":O$+="BIT 1,C_":O$+="BIT 1,D_":O$+="BIT 1,E_":O$+="BIT 1,H_":O$+="BIT 1,L_":O$+="BIT 1,(HL)_":O$+="BIT 1,A_":
+O$+="BIT 2,B_":O$+="BIT 2,C_":O$+="BIT 2,D_":O$+="BIT 2,E_":O$+="BIT 2,H_":O$+="BIT 2,L_":O$+="BIT 2,(HL)_":O$+="BIT 2,A_":O$+="BIT 3,B_":O$+="BIT 3,C_":O$+="BIT 3,D_":O$+="BIT 3,E_":O$+="BIT 3,H_":O$+="BIT 3,L_":O$+="BIT 3,(HL)_":O$+="BIT 3,A_":
+O$+="BIT 4,B_":O$+="BIT 4,C_":O$+="BIT 4,D_":O$+="BIT 4,E_":O$+="BIT 4,H_":O$+="BIT 4,L_":O$+="BIT 4,(HL)_":O$+="BIT 4,A_":O$+="BIT 5,B_":O$+="BIT 5,C_":O$+="BIT 5,D_":O$+="BIT 5,E_":O$+="BIT 5,H_":O$+="BIT 5,L_":O$+="BIT 5,(HL)_":O$+="BIT 5,A_":
+O$+="BIT 6,B_":O$+="BIT 6,C_":O$+="BIT 6,D_":O$+="BIT 6,E_":O$+="BIT 6,H_":O$+="BIT 6,L_":O$+="BIT 6,(HL)_":O$+="BIT 6,A_":O$+="BIT 7,B_":O$+="BIT 7,C_":O$+="BIT 7,D_":O$+="BIT 7,E_":O$+="BIT 7,H_":O$+="BIT 7,L_":O$+="BIT 7,(HL)_":O$+="BIT 7,A_":
+O$+="RES 0,B_":O$+="RES 0,C_":O$+="RES 0,D_":O$+="RES 0,E_":O$+="RES 0,H_":O$+="RES 0,L_":O$+="RES 0,(HL)_":O$+="RES 0,A_":O$+="RES 1,B_":O$+="RES 1,C_":O$+="RES 1,D_":O$+="RES 1,E_":O$+="RES 1,H_":O$+="RES 1,L_":O$+="RES 1,(HL)_":O$+="RES 1,A_":
+O$+="RES 2,B_":O$+="RES 2,C_":O$+="RES 2,D_":O$+="RES 2,E_":O$+="RES 2,H_":O$+="RES 2,L_":O$+="RES 2,(HL)_":O$+="RES 2,A_":O$+="RES 3,B_":O$+="RES 3,C_":O$+="RES 3,D_":O$+="RES 3,E_":O$+="RES 3,H_":O$+="RES 3,L_":O$+="RES 3,(HL)_":O$+="RES 3,A_":
+O$+="RES 4,B_":O$+="RES 4,C_":O$+="RES 4,D_":O$+="RES 4,E_":O$+="RES 4,H_":O$+="RES 4,L_":O$+="RES 4,(HL)_":O$+="RES 4,A_":O$+="RES 5,B_":O$+="RES 5,C_":O$+="RES 5,D_":O$+="RES 5,E_":O$+="RES 5,H_":O$+="RES 5,L_":O$+="RES 5,(HL)_":O$+="RES 5,A_":
+O$+="RES 6,B_":O$+="RES 6,C_":O$+="RES 6,D_":O$+="RES 6,E_":O$+="RES 6,H_":O$+="RES 6,L_":O$+="RES 6,(HL)_":O$+="RES 6,A_":O$+="RES 7,B_":O$+="RES 7,C_":O$+="RES 7,D_":O$+="RES 7,E_":O$+="RES 7,H_":O$+="RES 7,L_":O$+="RES 7,(HL)_":O$+="RES 7,A_":
+O$+="SET 0,B_":O$+="SET 0,C_":O$+="SET 0,D_":O$+="SET 0,E_":O$+="SET 0,H_":O$+="SET 0,L_":O$+="SET 0,(HL)_":O$+="SET 0,A_":O$+="SET 1,B_":O$+="SET 1,C_":O$+="SET 1,D_":O$+="SET 1,E_":O$+="SET 1,H_":O$+="SET 1,L_":O$+="SET 1,(HL)_":O$+="SET 1,A_":
+O$+="SET 2,B_":O$+="SET 2,C_":O$+="SET 2,D_":O$+="SET 2,E_":O$+="SET 2,H_":O$+="SET 2,L_":O$+="SET 2,(HL)_":O$+="SET 2,A_":O$+="SET 3,B_":O$+="SET 3,C_":O$+="SET 3,D_":O$+="SET 3,E_":O$+="SET 3,H_":O$+="SET 3,L_":O$+="SET 3,(HL)_":O$+="SET 3,A_":
+O$+="SET 4,B_":O$+="SET 4,C_":O$+="SET 4,D_":O$+="SET 4,E_":O$+="SET 4,H_":O$+="SET 4,L_":O$+="SET 4,(HL)_":O$+="SET 4,A_":O$+="SET 5,B_":O$+="SET 5,C_":O$+="SET 5,D_":O$+="SET 5,E_":O$+="SET 5,H_":O$+="SET 5,L_":O$+="SET 5,(HL)_":O$+="SET 5,A_":
+O$+="SET 6,B_":O$+="SET 6,C_":O$+="SET 6,D_":O$+="SET 6,E_":O$+="SET 6,H_":O$+="SET 6,L_":O$+="SET 6,(HL)_":O$+="SET 6,A_":O$+="SET 7,B_":O$+="SET 7,C_":O$+="SET 7,D_":O$+="SET 7,E_":O$+="SET 7,H_":O$+="SET 7,L_":O$+="SET 7,(HL)_":O$+="SET 7,A_":
+' ORDER OF ADDITION XED=1024,XDDCB=1280,XFDCB=1536
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="IN B,(C)_":O$+="OUT (C),B_":O$+="SBC HL,BC_":O$+="LD (**),BC_":O$+="NEG_":O$+="RETN_":O$+="IM 0_":O$+="LD I,A_":O$+="IN C,(C)_":O$+="OUT (C),C_":O$+="ADC HL,BC_":O$+="LD BC,(**)_":O$+="NEG_":O$+="RETI_":O$+="IM 0_":O$+="LD R,A_":
+O$+="IN D,(C)_":O$+="OUT (C),D_":O$+="SBC HL,DE_":O$+="LD (**),DE_":O$+="NEG_":O$+="RETN_":O$+="IM 1_":O$+="LD A,I_":O$+="IN E,(C)_":O$+="OUT (C),E_":O$+="ADC HL,DE_":O$+="LD DE,(**)_":O$+="NEG_":O$+="RETN_":O$+="IM 2_":O$+="LD A,R_":
+O$+="IN H,(C)_":O$+="OUT (C),H_":O$+="SBC HL,HL_":O$+="LD (**),HL_":O$+="NEG_":O$+="RETN_":O$+="IM 0_":O$+="RRD_":O$+="IN L,(C)_":O$+="OUT (C),L_":O$+="ADC HL,HL_":O$+="LD HL,(**)_":O$+="NEG_":O$+="RETN_":O$+="IM 0_":O$+="RLD_":
+O$+="IN NULL,(C)_":O$+="OUT (C),00H_":O$+="SBC HL,SP_":O$+="LD (**),SP_":O$+="NEG_":O$+="RETN_":O$+="IM 1_":O$+="NONI_":O$+="IN A,(C)_":O$+="OUT (C),A_":O$+="ADC HL,SP_":O$+="LD SP,(**)_":O$+="NEG_":O$+="RETN_":O$+="IM 2_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="LDI_":O$+="CPI_":O$+="INI_":O$+="OUTI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="LDD_":O$+="CPD_":O$+="IND_":O$+="OUTD_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="LDIR_":O$+="CPIR_":O$+="INIR_":O$+="OTIR_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="LDDR_":O$+="CPDR_":O$+="INDR_":O$+="OTDR_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":O$+="NONI_":
+' ORDER OF ADDITION XDDCB=1280,XFDCB=1536
+O$+="RLC (IX+*),B_":O$+="RLC (IX+*),C_":O$+="RLC (IX+*),D_":O$+="RLC (IX+*),E_":O$+="RLC (IX+*),H_":O$+="RLC (IX+*),L_":O$+="RLC (IX+*)_":O$+="RLC (IX+*),A_":O$+="RRC (IX+*),B_":O$+="RRC (IX+*),C_":O$+="RRC (IX+*),D_":O$+="RRC (IX+*),E_":O$+="RRC (IX+*),H_":O$+="RRC (IX+*),L_":O$+="RRC (IX+*)_":O$+="RRC (IX+*),A_":
+O$+="RL (IX+*),B_":O$+="RL (IX+*),C_":O$+="RL (IX+*),D_":O$+="RL (IX+*),E_":O$+="RL (IX+*),H_":O$+="RL (IX+*),L_":O$+="RL (IX+*)_":O$+="RL (IX+*),A_":O$+="RR (IX+*),B_":O$+="RR (IX+*),C_":O$+="RR (IX+*),D_":O$+="RR (IX+*),E_":O$+="RR (IX+*),H_":O$+="RR (IX+*),L_":O$+="RR (IX+*)_":O$+="RR (IX+*),A_":
+O$+="SLA (IX+*),B_":O$+="SLA (IX+*),C_":O$+="SLA (IX+*),D_":O$+="SLA (IX+*),E_":O$+="SLA (IX+*),H_":O$+="SLA (IX+*),L_":O$+="SLA (IX+*)_":O$+="SLA (IX+*),A_":O$+="SRA (IX+*),B_":O$+="SRA (IX+*),C_":O$+="SRA (IX+*),D_":O$+="SRA (IX+*),E_":O$+="SRA (IX+*),H_":O$+="SRA (IX+*),L_":O$+="SRA (IX+*)_":O$+="SRA (IX+*),A_":
+O$+="SLL (IX+*),B_":O$+="SLL (IX+*),C_":O$+="SLL (IX+*),D_":O$+="SLL (IX+*),E_":O$+="SLL (IX+*),H_":O$+="SLL (IX+*),L_":O$+="SLL (IX+*)_":O$+="SLL (IX+*),A_":O$+="SRL (IX+*),B_":O$+="SRL (IX+*),C_":O$+="SRL (IX+*),D_":O$+="SRL (IX+*),E_":O$+="SRL (IX+*),H_":O$+="SRL (IX+*),L_":O$+="SRL (IX+*)_":O$+="SRL (IX+*),A_":
+O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 0,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":O$+="BIT 1,(IX+*)_":
+O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 2,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":O$+="BIT 3,(IX+*)_":
+O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 4,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":O$+="BIT 5,(IX+*)_":
+O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 6,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":O$+="BIT 7,(IX+*)_":
+O$+="RES 0,(IX+*),B_":O$+="RES 0,(IX+*),C_":O$+="RES 0,(IX+*),D_":O$+="RES 0,(IX+*),E_":O$+="RES 0,(IX+*),H_":O$+="RES 0,(IX+*),L_":O$+="RES 0,(IX+*)_":O$+="RES 0,(IX+*),A_":O$+="RES 1,(IX+*),B_":O$+="RES 1,(IX+*),C_":O$+="RES 1,(IX+*),D_":O$+="RES 1,(IX+*),E_":O$+="RES 1,(IX+*),H_":O$+="RES 1,(IX+*),L_":O$+="RES 1,(IX+*)_":O$+="RES 1,(IX+*),A_":
+O$+="RES 2,(IX+*),B_":O$+="RES 2,(IX+*),C_":O$+="RES 2,(IX+*),D_":O$+="RES 2,(IX+*),E_":O$+="RES 2,(IX+*),H_":O$+="RES 2,(IX+*),L_":O$+="RES 2,(IX+*)_":O$+="RES 2,(IX+*),A_":O$+="RES 3,(IX+*),B_":O$+="RES 3,(IX+*),C_":O$+="RES 3,(IX+*),D_":O$+="RES 3,(IX+*),E_":O$+="RES 3,(IX+*),H_":O$+="RES 3,(IX+*),L_":O$+="RES 3,(IX+*)_":O$+="RES 3,(IX+*),A_":
+O$+="RES 4,(IX+*),B_":O$+="RES 4,(IX+*),C_":O$+="RES 4,(IX+*),D_":O$+="RES 4,(IX+*),E_":O$+="RES 4,(IX+*),H_":O$+="RES 4,(IX+*),L_":O$+="RES 4,(IX+*)_":O$+="RES 4,(IX+*),A_":O$+="RES 5,(IX+*),B_":O$+="RES 5,(IX+*),C_":O$+="RES 5,(IX+*),D_":O$+="RES 5,(IX+*),E_":O$+="RES 5,(IX+*),H_":O$+="RES 5,(IX+*),L_":O$+="RES 5,(IX+*)_":O$+="RES 5,(IX+*),A_":
+O$+="RES 6,(IX+*),B_":O$+="RES 6,(IX+*),C_":O$+="RES 6,(IX+*),D_":O$+="RES 6,(IX+*),E_":O$+="RES 6,(IX+*),H_":O$+="RES 6,(IX+*),L_":O$+="RES 6,(IX+*)_":O$+="RES 6,(IX+*),A_":O$+="RES 7,(IX+*),B_":O$+="RES 7,(IX+*),C_":O$+="RES 7,(IX+*),D_":O$+="RES 7,(IX+*),E_":O$+="RES 7,(IX+*),H_":O$+="RES 7,(IX+*),L_":O$+="RES 7,(IX+*)_":O$+="RES 7,(IX+*),A_":
+O$+="SET 0,(IX+*),B_":O$+="SET 0,(IX+*),C_":O$+="SET 0,(IX+*),D_":O$+="SET 0,(IX+*),E_":O$+="SET 0,(IX+*),H_":O$+="SET 0,(IX+*),L_":O$+="SET 0,(IX+*)_":O$+="SET 0,(IX+*),A_":O$+="SET 1,(IX+*),B_":O$+="SET 1,(IX+*),C_":O$+="SET 1,(IX+*),D_":O$+="SET 1,(IX+*),E_":O$+="SET 1,(IX+*),H_":O$+="SET 1,(IX+*),L_":O$+="SET 1,(IX+*)_":O$+="SET 1,(IX+*),A_":
+O$+="SET 2,(IX+*),B_":O$+="SET 2,(IX+*),C_":O$+="SET 2,(IX+*),D_":O$+="SET 2,(IX+*),E_":O$+="SET 2,(IX+*),H_":O$+="SET 2,(IX+*),L_":O$+="SET 2,(IX+*)_":O$+="SET 2,(IX+*),A_":O$+="SET 3,(IX+*),B_":O$+="SET 3,(IX+*),C_":O$+="SET 3,(IX+*),D_":O$+="SET 3,(IX+*),E_":O$+="SET 3,(IX+*),H_":O$+="SET 3,(IX+*),L_":O$+="SET 3,(IX+*)_":O$+="SET 3,(IX+*),A_":
+O$+="SET 4,(IX+*),B_":O$+="SET 4,(IX+*),C_":O$+="SET 4,(IX+*),D_":O$+="SET 4,(IX+*),E_":O$+="SET 4,(IX+*),H_":O$+="SET 4,(IX+*),L_":O$+="SET 4,(IX+*)_":O$+="SET 4,(IX+*),A_":O$+="SET 5,(IX+*),B_":O$+="SET 5,(IX+*),C_":O$+="SET 5,(IX+*),D_":O$+="SET 5,(IX+*),E_":O$+="SET 5,(IX+*),H_":O$+="SET 5,(IX+*),L_":O$+="SET 5,(IX+*)_":O$+="SET 5,(IX+*),A_":
+O$+="SET 6,(IX+*),B_":O$+="SET 6,(IX+*),C_":O$+="SET 6,(IX+*),D_":O$+="SET 6,(IX+*),E_":O$+="SET 6,(IX+*),H_":O$+="SET 6,(IX+*),L_":O$+="SET 6,(IX+*)_":O$+="SET 6,(IX+*),A_":O$+="SET 7,(IX+*),B_":O$+="SET 7,(IX+*),C_":O$+="SET 7,(IX+*),D_":O$+="SET 7,(IX+*),E_":O$+="SET 7,(IX+*),H_":O$+="SET 7,(IX+*),L_":O$+="SET 7,(IX+*)_":O$+="SET 7,(IX+*),A_":
+' ORDER OF ADDITION XFDCB=1536
+O$+="RLC (IY+*),B_":O$+="RLC (IY+*),C_":O$+="RLC (IY+*),D_":O$+="RLC (IY+*),E_":O$+="RLC (IY+*),H_":O$+="RLC (IY+*),L_":O$+="RLC (IY+*)_":O$+="RLC (IY+*),A_":O$+="RRC (IY+*),B_":O$+="RRC (IY+*),C_":O$+="RRC (IY+*),D_":O$+="RRC (IY+*),E_":O$+="RRC (IY+*),H_":O$+="RRC (IY+*),L_":O$+="RRC (IY+*)_":O$+="RRC (IY+*),A_":
+O$+="RL (IY+*),B_":O$+="RL (IY+*),C_":O$+="RL (IY+*),D_":O$+="RL (IY+*),E_":O$+="RL (IY+*),H_":O$+="RL (IY+*),L_":O$+="RL (IY+*)_":O$+="RL (IY+*),A_":O$+="RR (IY+*),B_":O$+="RR (IY+*),C_":O$+="RR (IY+*),D_":O$+="RR (IY+*),E_":O$+="RR (IY+*),H_":O$+="RR (IY+*),L_":O$+="RR (IY+*)_":O$+="RR (IY+*),A_":
+O$+="SLA (IY+*),B_":O$+="SLA (IY+*),C_":O$+="SLA (IY+*),D_":O$+="SLA (IY+*),E_":O$+="SLA (IY+*),H_":O$+="SLA (IY+*),L_":O$+="SLA (IY+*)_":O$+="SLA (IY+*),A_":O$+="SRA (IY+*),B_":O$+="SRA (IY+*),C_":O$+="SRA (IY+*),D_":O$+="SRA (IY+*),E_":O$+="SRA (IY+*),H_":O$+="SRA (IY+*),L_":O$+="SRA (IY+*)_":O$+="SRA (IY+*),A_":
+O$+="SLL (IY+*),B_":O$+="SLL (IY+*),C_":O$+="SLL (IY+*),D_":O$+="SLL (IY+*),E_":O$+="SLL (IY+*),H_":O$+="SLL (IY+*),L_":O$+="SLL (IY+*)_":O$+="SLL (IY+*),A_":O$+="SRL (IY+*),B_":O$+="SRL (IY+*),C_":O$+="SRL (IY+*),D_":O$+="SRL (IY+*),E_":O$+="SRL (IY+*),H_":O$+="SRL (IY+*),L_":O$+="SRL (IY+*)_":O$+="SRL (IY+*),A_":
+O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 0,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":O$+="BIT 1,(IY+*)_":
+O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 2,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":O$+="BIT 3,(IY+*)_":
+O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 4,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":O$+="BIT 5,(IY+*)_":
+O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 6,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":O$+="BIT 7,(IY+*)_":
+O$+="RES 0,(IY+*),B_":O$+="RES 0,(IY+*),C_":O$+="RES 0,(IY+*),D_":O$+="RES 0,(IY+*),E_":O$+="RES 0,(IY+*),H_":O$+="RES 0,(IY+*),L_":O$+="RES 0,(IY+*)_":O$+="RES 0,(IY+*),A_":O$+="RES 1,(IY+*),B_":O$+="RES 1,(IY+*),C_":O$+="RES 1,(IY+*),D_":O$+="RES 1,(IY+*),E_":O$+="RES 1,(IY+*),H_":O$+="RES 1,(IY+*),L_":O$+="RES 1,(IY+*)_":O$+="RES 1,(IY+*),A_":
+O$+="RES 2,(IY+*),B_":O$+="RES 2,(IY+*),C_":O$+="RES 2,(IY+*),D_":O$+="RES 2,(IY+*),E_":O$+="RES 2,(IY+*),H_":O$+="RES 2,(IY+*),L_":O$+="RES 2,(IY+*)_":O$+="RES 2,(IY+*),A_":O$+="RES 3,(IY+*),B_":O$+="RES 3,(IY+*),C_":O$+="RES 3,(IY+*),D_":O$+="RES 3,(IY+*),E_":O$+="RES 3,(IY+*),H_":O$+="RES 3,(IY+*),L_":O$+="RES 3,(IY+*)_":O$+="RES 3,(IY+*),A_":
+O$+="RES 4,(IY+*),B_":O$+="RES 4,(IY+*),C_":O$+="RES 4,(IY+*),D_":O$+="RES 4,(IY+*),E_":O$+="RES 4,(IY+*),H_":O$+="RES 4,(IY+*),L_":O$+="RES 4,(IY+*)_":O$+="RES 4,(IY+*),A_":O$+="RES 5,(IY+*),B_":O$+="RES 5,(IY+*),C_":O$+="RES 5,(IY+*),D_":O$+="RES 5,(IY+*),E_":O$+="RES 5,(IY+*),H_":O$+="RES 5,(IY+*),L_":O$+="RES 5,(IY+*)_":O$+="RES 5,(IY+*),A_":
+O$+="RES 6,(IY+*),B_":O$+="RES 6,(IY+*),C_":O$+="RES 6,(IY+*),D_":O$+="RES 6,(IY+*),E_":O$+="RES 6,(IY+*),H_":O$+="RES 6,(IY+*),L_":O$+="RES 6,(IY+*)_":O$+="RES 6,(IY+*),A_":O$+="RES 7,(IY+*),B_":O$+="RES 7,(IY+*),C_":O$+="RES 7,(IY+*),D_":O$+="RES 7,(IY+*),E_":O$+="RES 7,(IY+*),H_":O$+="RES 7,(IY+*),L_":O$+="RES 7,(IY+*)_":O$+="RES 7,(IY+*),A_":
+O$+="SET 0,(IY+*),B_":O$+="SET 0,(IY+*),C_":O$+="SET 0,(IY+*),D_":O$+="SET 0,(IY+*),E_":O$+="SET 0,(IY+*),H_":O$+="SET 0,(IY+*),L_":O$+="SET 0,(IY+*)_":O$+="SET 0,(IY+*),A_":O$+="SET 1,(IY+*),B_":O$+="SET 1,(IY+*),C_":O$+="SET 1,(IY+*),D_":O$+="SET 1,(IY+*),E_":O$+="SET 1,(IY+*),H_":O$+="SET 1,(IY+*),L_":O$+="SET 1,(IY+*)_":O$+="SET 1,(IY+*),A_":
+O$+="SET 2,(IY+*),B_":O$+="SET 2,(IY+*),C_":O$+="SET 2,(IY+*),D_":O$+="SET 2,(IY+*),E_":O$+="SET 2,(IY+*),H_":O$+="SET 2,(IY+*),L_":O$+="SET 2,(IY+*)_":O$+="SET 2,(IY+*),A_":O$+="SET 3,(IY+*),B_":O$+="SET 3,(IY+*),C_":O$+="SET 3,(IY+*),D_":O$+="SET 3,(IY+*),E_":O$+="SET 3,(IY+*),H_":O$+="SET 3,(IY+*),L_":O$+="SET 3,(IY+*)_":O$+="SET 3,(IY+*),A_":
+O$+="SET 4,(IY+*),B_":O$+="SET 4,(IY+*),C_":O$+="SET 4,(IY+*),D_":O$+="SET 4,(IY+*),E_":O$+="SET 4,(IY+*),H_":O$+="SET 4,(IY+*),L_":O$+="SET 4,(IY+*)_":O$+="SET 4,(IY+*),A_":O$+="SET 5,(IY+*),B_":O$+="SET 5,(IY+*),C_":O$+="SET 5,(IY+*),D_":O$+="SET 5,(IY+*),E_":O$+="SET 5,(IY+*),H_":O$+="SET 5,(IY+*),L_":O$+="SET 5,(IY+*)_":O$+="SET 5,(IY+*),A_":
+O$+="SET 6,(IY+*),B_":O$+="SET 6,(IY+*),C_":O$+="SET 6,(IY+*),D_":O$+="SET 6,(IY+*),E_":O$+="SET 6,(IY+*),H_":O$+="SET 6,(IY+*),L_":O$+="SET 6,(IY+*)_":O$+="SET 6,(IY+*),A_":O$+="SET 7,(IY+*),B_":O$+="SET 7,(IY+*),C_":O$+="SET 7,(IY+*),D_":O$+="SET 7,(IY+*),E_":O$+="SET 7,(IY+*),H_":O$+="SET 7,(IY+*),L_":O$+="SET 7,(IY+*)_":O$+="SET 7,(IY+*),A_":
 
+T3=1 ' O$ INDEX
+For T1=0 To 6
+For T2=0 To 255
 
+T4=0:T5=0:DO
+If Mid$(O$,T3+T4,1)="_" Then T5=1 Else T4+=1
+Loop While T5=0
+XMNEM(T1*256+T2)=T3:XMLEN(T1*256+T2)=T4:
+T3=T3+T4+1
+'Print Mid$(O$,XMNEM(T1*256+T2),XMLEN(T1*256+T2));" ";
+Next
+'Sleep
+'PRINT
+Next
+'Sleep
 
-
-
-
-
-
-
-
+End Sub
+EMUGENLUT
