@@ -7,13 +7,15 @@ FreeConsole()
 Declare Function GETPTR(SIZE As ULongInt,OFFS As ULongInt) As Unsigned Byte Ptr 
 
 ' - - JUST SCREEN INIT HERE
-ScreenRes 1024,960,32
+ScreenRes 1024,768+32,32
 'ScreenRes 2432,960,32,2
-'Width 2432/8, 960/16 '' Use 8*14 font
+Width 1024/8, 768/16 '' Use 8*14 font
 
 ' - - TEMP USE VARS
-Dim Shared As Unsigned Long T1,T2,T3,T4,T5,T6,T7,T8,T9,T0,E1,E2,E3,E4,E5,E6,E7,E8,E9,E0,CYC
+Dim Shared As Unsigned Long T1,T2,T3,T4,T5,T6,T7,T8,T9,T0,E1,E2,E3,E4,E5,E6,E7,E8,E9,E0,CYC,TSCRX,TSCRY
 Dim Shared As ULongInt F1,F2,F3,F4,F5,F6,F7,F8,F9
+Dim Shared As ULongInt Ptr UP1,UP2,UP3,UP4
+Dim Shared As ULong Ptr LP1,LP2,LP3,LP4
 Dim Shared As Unsigned Long S1,S2,S3,S4,S5,S6,S7,S8
 Dim Shared AS DOUBLE SEC,SEC2
 
@@ -94,7 +96,7 @@ Dim Shared As Const ULong IULLXL=108,IULLXH=109,IULLYL=110,IULLYH=111,IULLPL=112
 Dim Shared As Const ULong IULRIA=114,IULRRA=115
 Dim Shared As Const ULong IULRBL=116,IULRCL=117,IULRDL=118,IULREL=119,IULRHL=120,IULRLL=121,IULRTL=122,IULRAL=123
 Dim Shared As Const ULong IULRZL=124,IULRWL=125,IULXLL=126,IULXHL=127,IULYLL=128,IULYHL=129
-Dim Shared As Const ULong IULRFT=130,IULXLT=131,IULXHT=132,IULYLT=133,IULYHT=134,IULTXH=135,IULTXL=136,IULTYH=137,IULTYL=138
+Dim Shared As Const ULong IULRFT=130,IULXLT=131,IULXHT=132,IULYLT=133,IULYHT=134,IULTXL=135,IULTXH=136,IULTYL=137,IULTYH=138
 Dim Shared As Const ULong IULBADD=139,IULTADD=145,IULXSADD=147,IULBADC=153,IULTADC=159,IULXSADC=161 ' X ORDER  SPH-SPL-IXH-IXL-IYH-IYL NEED REVERSE
 Dim Shared As Const ULong IULBSUB=167,IULTSUB=173,IULXSSUB=175,IULBSBC=181,IULTSBC=187,IULXSSBC=189,IUFQADD=195
 Dim Shared As Const ULong IUOINC=196,IUODEC=197,IUFQID=198
@@ -113,7 +115,7 @@ Dim Shared As Const ULong IUNWR=301,IUTIO=302,IUPOW=303,IUFWR=304,IUONEG=305,IUL
 Dim Shared As Const ULong IUOQIO=309,IUORVN=310,IULANLL=311,IULTNLL=312,IULANLH=313,IULTNHL=314
 Dim Shared As Const ULong IUIM0=315,IUIM1=316,IUIM2=317,IULAQLD=318,IULTCPQ=319,IUOQPV=320 
 Dim Shared As Const ULong IUADDWZ=321,IUTADDQI=322,IUTADDQD=323,IULLRZ=324,IDONE=325,IPAR=326,IEXT=327
-Dim Shared As Const ULong IUIFF=328,IUIMRQ=329,IUIMFET=330,IULWI=331,IULZ00=332,IUWBITQ=340,ISKIP6Z=341
+Dim Shared As Const ULong IUIFF=328,IUIMRQ=329,IUIMFET=330,IULWI=331,IULZ00=332,IUWBITQ=340,ISKIP6Z=341,IULWQLD=342
 
 ' EMULATION LUTs
 Dim Shared As Unsigned Byte Ptr PFLAG,PADD,PSUB,PAND,PXOR,PPOR,PPCP
@@ -127,7 +129,7 @@ Dim Shared As ULongInt Ptr MAIN,DD,FD,CB,DDCB,FDCB,ED,PROOT
 
 Dim Shared As Const ULong CADD=0,CSUB=131072,CAND=262144,CXOR=327680,COR=393216,CCP=458752
 Dim Shared As Const ULong CRLC=524288,CRRC=524800,CRL=525312,CRR=526336
-Dim Shared As Const ULong CSLA=527360,CSRA=527872,CSLL=528384,CSRL=528896,CDAA=529408
+Dim Shared As Const ULong CSLA=527360,CSRA=527872,CSLL=528384,CSRL=528896
 
 Dim Shared As ULong Ptr PMOS,PMCUR,XSCR
 Dim Shared As UByte Ptr PMEM,CUR
@@ -149,21 +151,8 @@ Dim Shared As Single DIVD,DIVS,DIVF,DIVM
 'Dim Shared As ULongInt Ptr U1,U2,U3,U4
 'Dim Shared As ULongInt Ptr X1,X2,X3,X4
 Dim Shared As UShort W1,W2,W3,W4
-
-
-
-'Dim Shared As ULong XB,XC,XD,XE,XH,XL,XT,XA,XF
-'Dim SHARED As ULong EXB,EXC,EXD,EXE,EXH,EXL,EXA,EXF
-'DIM SHARED As ULong XW,XZ,XS,XP,XXH,XXL,XYH,XYL',XI,XR,XALUF,XALU,XBUS
-
-'Dim Shared As ULong ISFC,TEMP,XPC
-'Dim SHARED As ULong XADDER,XIFF1,XIFF2,XIMM
-'DIM SHARED As ULong XADDR,XSUBST,XCODE,XPREFIX,XCUROFF',XBYTE,XSADD,FIRST01
-'DIM Shared As ULong ISPFX,ISHALT,ISINT,X.ISEXT'EXTACT,EXTSEL,ISPAR,ISEND,ISFSET
-DIM SHARED As ULong XERR,XPOFF,USED,RETR
-
+Dim SHARED As ULong XERR,XPOFF,USED,RETR
 Dim Shared As ULong REG,REGL,REGR,ALUO
-
 
 Dim Shared As String K$,A$,B$,C$,D$,SS1,SS2,SS3,SS4,SS5,SS6,SS7,SS8,SS9,SS10,SS11,SS12,Q$,O$
 
@@ -176,7 +165,7 @@ Dim Shared As Unsigned Long UOPN(512),UOPL(512),XMNEM(1792),XMLEN(1792)
 #Include "EMU_ALU_LUT.EXT" ' HERE COMBINED MANY
 
 Dim As FILE Ptr filePtr:
-filePtr = fopen("ELITE.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
+filePtr = fopen("ELITE_PENT.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
 BBASE = 208: PBASE = 16384: ABASE = 22528 ' BASE BRIGHT FOR ATTR, BASE SCREEN ADDR AND ITS ATTR
 DIVD = 4: DIVS = 3.5:DIVF=DIVS*.9:DIVM=DIVS*.8:PATF=0' PATF ENABLE PATTERNS, DIVD CUT LUMA SURR 3*3,DIVS CUT LUMA TOTAL NON PATT, DIVF LESSCUT LINE PATT, DIVM LESS CUT CHECKER PATT 
 
@@ -216,100 +205,140 @@ F2=0:For F1=&H00 To 1:
 
 Next   
 
-'X.XH=&H21:X.XL=&H00 'IX 03D4
+'X.XH=&H21:X.XL=&H00 'IX 03D4 
 'X.YH=&H31:X.YL=&H00 'IY 5C3A
 
 SEC=Timer
 
-'T1=X.TAK
 
-'Cls
-'PSet (0,0)
-'PSet (1023,767)
-'Circle (512,384),380
-'SCRSHOW
-'Sleep
-CYC=3500000*300
-X.INTL=71680'69888
+CYC=3500000*200
+X.INTL=71680'69888 '
 X.INTC=X.INT1
-'X.TAK=22140+699'X.INTL 
-X.TAK=0'X.INTL 
+X.TAK=0 
 
-'E1=3
+GoTo SKIPDAA
+T4=0
+For T2=0 To 255
+T3=0:Print " NUM=";T2
+For T1=0 To 31 Step 1
+X.ALU=*(X.DAA+T2+(T1 Shl 8)):X.FLG=X.ALU Shr 8:X.ALU And= &HFF
+T3+=X.ALU+X.FLG
+K$="                                  "
+If T1 And XFH Then K+="H"
+If T1 And XFN Then K+="N"
+If T1 And XFC Then K+="C"
+K+=" "+Str(T1)+"-"+Str(X.FLG)+"-"+Str(X.ALU)+"("+BIN(X.FLG,8)+"-"+HEX(X.ALU,2)+")"
+Print Right(K$,32);
+Next
+T4+=T3
+Print " SUMM=";T2;"-";T4;" LOCSUMM ";T3
+K=InKey
+Sleep
+If K=" " Then End
+Next
+
+Sleep:End
+
+SKIPDAA:
+
+E1=1
+TSCRX=2176:TSCRY=960
+E5=TSCRX*15
+E1=1:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 
+
 Do
-If E1=3 Then E1=1:ScreenRes 2400,960,32:Width 2400/8, 960/16 Else EndIf
 
-
-If X.ISEXT And 1 Then 
-X.UOP=*X.XCUR
-If E1 Then XPOFF=X.XCUR-PMOS':SS1+=" EXT   :" 'Str(X.ISEXT)
-X.XCUR+=1 
-Else X.UOP=*X.CUR
-If E1 Then XPOFF=X.CUR-PMOS':SS1+="   MAIN:"
-X.CUR+=1:If X.TAK=X.INTL Then X.TAK=0:If X.IFF1 Then X.ISINT=1':E1=1:ScreenRes 2432,960,32:Width 2432/8, 960/16
-
-EndIf
-
-
-
+If X.ISEXT And 1 Then X.UOP=*X.XCUR:X.XCUR+=1 Else X.UOP=*X.CUR:X.CUR+=1:If X.TAK=X.INTL Then X.TAK=0:E4+=1:If X.IFF1 Then X.ISINT=1 Else EndIf:EndIf
 #Include "EMU_MICROACT.EXT"
 
-If X.UOP=IUAPCI And X.ADDR=&H1287  Then X.TAK+=0:E1=1:ScreenRes 2400,960,32:Width 2400/8, 960/16 Else EndIf
-If E3=5 And ((X.B Shl 8)+X.C)=0  Then E1=1:E3=0':ScreenRes 2400,960,32:Width 2400/8, 960/16 Else EndIf
-If E3=6 And ((X.H Shl 8)+X.L)<&H4000  Then E1=1:E3=0':ScreenRes 2400,960,32:Width 2400/8, 960/16 Else EndIf
-If E3=7 And (X.B)=1  Then E1=1:E3=0':ScreenRes 2400,960,32:Width 2400/8, 960/16 Else EndIf
+
+'If X.UOP=IUAPCI And X.ADDR=&H0E68 And E8=0 Then E8=1:X.TAK+=0:E1=1:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 Else EndIf
+
+If E3=1 And X.UOP=IUAPCI And X.ADDR=&H8291 Then E1=1:E3=0
+If E3=2 And X.UOP=334 Then E1=1:E3=0
 
 
-If E1 Then SHOWINFO':SCRSHOW2
+If E3=5 And ((X.B Shl 8)+X.C)=0  Then E1=1:E3=0
+If E3=6 And ((X.H Shl 8)+X.L)<&H4000 Then E1=1:E3=0
+If E3=7 And (X.B)=0  Then E1=1:E3=0
+If E3=8 And X.TAK>(X.INTL-40)  Then E1=1:E3=0
+If E3=9 And X.UOP=SIGUWZ Then E1=1:E3=0
+If E3=10 Then E1=1:E3=0:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 Else EndIf
 
-If CYC<30000 Then 
-filePtr = fopen("ELITE_ZDOC.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
-X.CUR=PMOS
-X.SUBST=32768
-X.PC=32768
-X.PREFIX=0
-X.ISEXT=0
-X.CUROFF=XMAIN
-X.IMM=1
-X.ISINT=0
 
-X.A=&H00:X.FLG=&H5C 'AF 005C
-X.EAF=(&H00 SHL 32)+&H5C 'AF' 005C
-X.B=&H17:X.C=&H20 'BC 8000
-X.EBC=(&H17 SHL 32)+&H21 'BC' 1721
-X.D=&H00:X.E=&HB8 'DE 00B8
-X.EDE=(&H5C SHL 32)+&HB9 'DE' 5CB9
-X.H=&H00:X.L=&H38 'HL 0038
-X.EHL=(&H00 SHL 32)+&H00 'HL' 0000
+If E1 Then 
+
+If E7 Then 
+	E7-=1: 'SCRSHOW2:
+	Locate 59,65:Print E7;" ";X.TAK;"    " 
+	Else 
+
+SCROLLOC:SHOWINFO:SCRSHOW2
+EndIf
+
+Else 
+EndIf 
+
+
+
+If E3=99 Then 
+filePtr = fopen("ELITE_PDOC.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
+
+X.CUR=PMOS:X.SUBST=32768:X.PC=32768:
+X.PREFIX=0:X.ISEXT=0:X.CUROFF=XMAIN:X.IMM=1:X.IFF1=1:X.ISINT=0:E3=0
+
+X.TAK=1010-1
+
+X.I=&H3F:X.R=&H64
+
+X.S=&H7F:X.P=&HF0
+
 X.XH=&H03:X.XL=&HD4 'IX 03D4
 X.YH=&H5C:X.YL=&H3A 'IY 5C3A
-X.S=&H7F:X.P=&HF6 'SP 7FF6
-X.I=&HA9:X.R=&HDC 'IR A9DC
-
-CYC=3500000*1000
-
-Else ENDIF
 
 
+'X.A=&H00:X.FLG=&H5C 
+'X.EAF=(&H00 SHL 32)+&H44 
+'X.B=&H17:X.C=&H18
+'X.EBC=(&H00 SHL 32)+&H4B
+'X.D=&H5C:X.E=&HB9 
+'X.EDE=(&H00 SHL 32)+&H06 
+'X.H=&H5C:X.L=&HB7 
+'X.EHL=(&H10 SHL 32)+&H7F 
 
-If E2>20000 Then 
 
-If E1=0 And E3=0 Then SCRSHOW:Locate 97,1:Print "CYCLE=";CYC;" INT=";X.TAK
+CYC=0
+Else EndIf
 
-E2=0 
-Else 
-E2+=1
-EndIf
+E2+=1:If E2>150000 And E1=0 And E3=0 Then SCRSHOW2:SCROLLOC:Print "CYCLE=";CYC;" INT=";X.TAK;"    ":E2=0
+
+'If E2>70000 Then SCRSHOW:Locate 97,1:Print "CYCLE=";CYC;" INT=";X.TAK;"    ":E2=0 Else E2+=1 EndIf
 
 CYC-=1:
 K$=InKey
 If K=" " Then CYC=0
-If K="2" Then E1=0:ScreenRes 1024,960,32
-If K="5" Then E1=0:E3=5:Print "*** 5 *** KILL LDIR ***"
-If K="6" Then E1=0:E3=6:Print "*** 6 *** HL 4000 ***"
-If K="7" Then E1=0:E3=7:Print "*** 7 *** KILL DJNZ ***"
 
-'If INKEY="4" Then E1=1:ScreenRes 2400,960,32,2:Width 2400/8, 960/16
+If K="1" Then E1=0:E3=1:SCROLLOC:Print "*** 1 *** 8291 *** FRAME ";E4
+If K="2" Then E1=0:E3=2:SCROLLOC:Print "*** 2 *** RST10 *** FRAME ";E4
+
+
+If K="5" Then E1=0:E3=5:SCROLLOC:Print "*** 5 *** KILL LDIR ***"
+If K="7" Then E1=0:E3=7:SCROLLOC:Print "*** 7 *** KILL DJNZ ***"
+If K="8" Then E1=0:E3=8:SCROLLOC:Print "*** 8 *** SEEK INT START ***"
+If K="9" Then E1=0:E3=9:SCROLLOC:Print "*** 9 *** USEWZ SEEK ***"
+
+If K="Z" Then E3=99:SCROLLOC:Print "*** START *** "
+If K="Y" Then *(X.IORD+&HDFFE)=&B11111110:SCROLLOC:Print " *** Y *** "' Else *(X.IORD+&HDFFE)=&B11111111:Print "                   " 
+If K="U" Then *(X.IORD+&HDFFE)=&B11111101:SCROLLOC:Print " *** U *** "' Else *(X.IORD+&HDFFE)=&B11111111:Print "                   " 
+If K="Q" Then E7=10000
+If K="W" Then E7=1000
+If K="E" Then E1=0
+If K="R" Then E1=1
+If K="O" Then X.TAK-=1
+If K="P" Then SCROLLOC:Print " *** PAUSE *** ":Sleep 
+
+
+'If X.ISINT Then *(X.IORD+&HDFFE)=(1 Shl (Rnd*15))Xor 255
 
 E0+=*(X.LTAK+X.ISEXT)
 X.TAK+=*(X.LTAK+X.ISEXT)
@@ -318,15 +347,13 @@ X.ISEXT=*(X.LEXT+X.ISEXT)
 Loop Until CYC=0
 
 SEC=(Timer-SEC)
-'End Sub:LOOP1
 
+
+'End Sub:LOOP1
 'Print:Print SEC:Print T1/SEC/1000000 
 'Print "ALL ";T8;" ";T8/328;" ";F4/SEC2/1000000
 
-'SCRBLUR
-'SCALE (ScreenPtr())
-
-Print "END":Sleep
+SCROLLOC:Print "END":Sleep
 '- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 ' - - - DATA LOCATOR, SAVE RETRIES TO RETR, USE *CURC AND "USED" TO COUNT
 Function GETPTR(SIZE As ULongInt,OFFS As ULongInt) As Unsigned Byte Ptr Static 

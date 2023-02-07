@@ -204,10 +204,10 @@ Case 131: X.XL=X.T:' "ULXLT":
 Case 132: X.XH=X.T:' "ULXHT":
 Case 133: X.YL=X.T:' "ULYHT":
 Case 134: X.YH=X.T:' "ULYLT":
-Case 135: X.T=X.XH:' "ULTXH":
-Case 136: X.T=X.XL:' "ULTXL":
-Case 137: X.T=X.YH:' "ULTYH":
-Case 138: X.T=X.YL:' "ULTYL":
+Case 135: X.T=X.XL:' "ULTXL":
+Case 136: X.T=X.XH:' "ULTXH":
+Case 137: X.T=X.YL:' "ULTYL":
+Case 138: X.T=X.YH:' "ULTYH":
 ' - - ALU OP ADD DIRECT SERIES - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 'IULBADD=139,IULTADD=145
 Case 139: X.FLG=*(X.LUT+CADD+(X.ALU SHL 1)+(X.B Shl 9)):X.ALU=((X.ALU+X.B) And &HFF):'"ULBADD":
@@ -386,12 +386,10 @@ X.ALU=((X.ALU-(X.FLG And 1)) And &HFF)
 Else X.ALU=((X.ALU+(X.FLG And 1)) And &HFF)
 EndIf:'"UOSADDC":
 'IUOBIT=268 'BIT n,r *Z513*0-  PV as Z, S set only if n=7 and b7 of r set Behaves much like AND r,2^n
-' S = set if n=7 and tested bit is set. 
-' 5 = set if n=5 and tested bit is set. 
-' 3 = set if n=3 and tested bit is set. 
+' REVERT F53 TO NORMAL COPY 'F53 SEAN'S BULLSHIT WRONG 5 = set if n=5 and tested bit is set. ' 3 = set if n=3 and tested bit is set. 
 Case 268: ' "UOBIT": 
 X.TEMP=1 Shl ((X.CODE Shr 3) And 7)
-X.FLG=(X.FLG And 1)+XFH+(X.ALU And (X.TEMP And &B10101000))' RESET 5,3,N, SET H, COPY CARRY, MASK ALU BY 7-5-3 AND GET 7-5-3 TO FLG   
+X.FLG=(X.FLG And 1)+XFH+(X.ALU And ((X.TEMP And &B10000000)+&B00101000))' RESET 5,3,N, SET H, COPY CARRY, COPY F53 FROM ALU, MASK ALU BY 7 AND GET 7 TO FLG   
 If (X.ALU And X.TEMP)=0 Then X.FLG+=4+64 ' IF BIT ZERO THEN SET Z AND PV
 
 ' - - DAA HERE - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -428,7 +426,7 @@ Case 291 : X.ISEXT=12:If X.FLG And XFS Then X.SUBST=X.Z+(X.W Shl 8) '"HIDDEN SWC
 ' CPL --*1*-1- 5, 3 from A registeX.
 Case 292 : X.ALU Xor= 255: X.FLG=(X.FLG And &B11000101)+(X.A And &B00101000)+&B00010010:'"UOCPL":
 ' - - - IUOSCF=293,IUOCCF=294 the content of A is copied to flags 5+3 after SCF/CCF , NO Q AWHILE - - - - - 
-Case 293 : X.FLG=(X.FLG And &B11010111)+(X.A And &B00101000)+1:'"UOSCF":
+Case 293 : X.FLG=(X.FLG And &B11000100)+(X.A And &B00101000)+1:'"UOSCF":
 ' CCF C=1-C, H as old C. 5, 3 from A register --***-0* MAY OR A53 BITS MAY COPY
 Case 294 : X.FLG=(X.FLG And &B11000100)+(X.A And &B00101000)+((X.FLG And 1)Shl 4)+((X.FLG And 1)XOR 1):'"UOCCF":
 ' - - IUEXA=295,IUEXX=296 NO AFF
@@ -442,7 +440,7 @@ Case 299 : X.IFF1=X.IFF2:'"REST/INT UCFF":
 Case 300 : X.TDE=X.DE:X.DE=X.HL:X.HL=X.TDE:'"HL-DE UXHD":
 ' - - - PORT IO UOPS 'IUNWR=301,IUTIO=302,IUPOW=303 - - - - - - - - - - - - 
 Case 301 : X.BUS=0:'"NULL UNWR":
-Case 302 : X.T=*(X.IORD+X.ADDR):'"RD("+Hex$(X.ADDR,4)+")="+Hex$(X.T,2)+" UTIO":
+Case 302 : X.T=*(X.IORD+X.ADDR):*(X.IORD+X.ADDR)=255':Print X.ADDR;" ";:SLEEP'"RD("+Hex$(X.ADDR,4)+")="+Hex$(X.T,2)+" UTIO":
 Case 303 : *(X.IOWR+X.ADDR)=X.BUS:'"WR("+Hex$(X.ADDR,4)+")="+Hex$(X.BUS,2)+" UPOW":
 ' - - IUFWR=304 - - 
 Case 304 : X.BUS=X.F:'"FLG UFWR":
@@ -471,7 +469,7 @@ Case 317 : X.IMM=2:X.INTC=X.INT2 '"IM=2 UIM2":
 ' - - LDIR QUIRK AFF IULAQLD=318 - - -  
 'LDI/LDIR/LDD/LDIR     --*0**0-  PV set if BC not 0 SO SAVE PV FROM UBCDPV 
 'F5 is bit 1 of (transferred byte + A) 'F3 is bit 3 of (transferred byte + A)
-Case 318 : X.TEMP=X.T+X.A:X.FLG=(X.FLG And &B110000101)+(X.TEMP And &B00001000)+((X.TEMP And &B00000010)Shl 4)':"ULAQLD":
+Case 318 : X.TEMP=X.T+X.A:X.FLG=(X.FLG And &B11000101)+(X.TEMP And &B00001000)+((X.TEMP And &B00000010)Shl 4)':"ULAQLD":
 ' - - - CPIR QUIRK AFF 
 'IULTCPQ=319
 'CPI/CPIR/CPD/CPDR     SZ*H**1-  PV set if BC not 0 'S,Z,H from (A - (HL) ) DONE BY ULTCP
@@ -537,11 +535,15 @@ EndIf
 ' "DONE":
 ' - - PAR NOW UOP NOT SIGNAL - - - 
 Case 326: If X.ISEXT And 1 Then X.ISEXT=3 Else X.ISEXT=6' "PAR:":
-' - - EXT NOW UOP NOT SIGNAL - - - 
-Case 327: X.ISEXT=2:X.XCUR=X.CUR:X.CUR=*(MAIN+(X.PREFIX*X.ISPFX))':SEL=*PCUR
-:' "EXT:":
+' - - EXT NOW UOP NOT SIGNAL - - - NEED TO CATCH INT TOO 
+Case 327: X.ISEXT=2:X.XCUR=X.CUR ' "EXT:":
+		If X.ISINT And X.IFF1 Then 
+			X.CUR=PMOS+X.INTC:X.ISINT=0:X.ISHALT=0
+			Else 
+			X.CUR=*(MAIN+(X.PREFIX*X.ISPFX))
+			EndIf
 ' - INTERRUPT OPERATORS
-Case 328: X.IFF1=0 ' "UIFF" 
+Case 328: X.PC=X.SUBST:X.IFF1=0 ' "UIFF" ' USEWZ/RR IN FACT DONE BY Z80 ON INT START 
 Case 329:  ' "UIMRQ" DUMMY HERE LIKE UNOP
 Case 330: X.T=&HFF ' "UIMFET" RECEIVE VECTOR HERE DEFAULTS TO &HFF FOR ALL IMs
 Case 331: X.W=X.I ' "ULWI" LD W,I
@@ -560,7 +562,8 @@ Case 340 : ' "UWBITQ" SO IN BIT THERE ARE TWO ALUOPS, IF USE INDIRECT ACCESS, SE
 ' They are a copy of an internal register of the Z80, which IS W
 X.FLG=(X.FLG And &B11010111)+(X.W And &B00101000)
 Case 341 : X.ISEXT=12:If X.FLG And XFZ Then X.CUR+=XDJNZ  '"SKIP6Z":
-
+' CYCLE LDIR LDXR/CPXR --*0**0- F53 FROM W, P BY UBCDPV, N H CLEAR ,VZ80 SHOW THAT CPIR RESET H IN CYCLE TOO
+Case 342 : X.FLG=(X.FLG And &B11000101)+(X.W And &B00101000) ' "IULWQLD"
 
 End Select
 

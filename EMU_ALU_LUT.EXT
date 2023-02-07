@@ -1,5 +1,22 @@
+Sub SCROLLOC()Static
 
-Sub SHOWINFO()
+UP1=ScreenPtr()
+UP1+=256
+UP2=UP1:UP2+=E5 Shr 1 
+PSet (0,0):PSet (TSCRX-1,TSCRY-1)
+For T2=0 To TSCRY-17 
+For T1=0 To (TSCRX Shr 1)-257-4
+*(UP1+T1)=*(UP2+T1)' Or 255:
+Next
+T3=TSCRX Shr 1
+UP1+=T3:UP2+=T3
+:Next:
+Locate 59,65:
+End Sub
+
+Sub SHOWINFO() Static
+
+
 
 
 'SS4="MOS("+RIGHT("...."+Str(XPOFF),5)+")"
@@ -8,13 +25,13 @@ Sub SHOWINFO()
 SS9=LEFT("                                                          ",32)
 
 If X.UOP=IUFET Then E0=2':SS9=RIGHT("........................."+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" ",32)
-If X.UOP=IUTRD Then SS9=RIGHT("........................."+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
+If X.UOP=IUTRD Or X.UOP=IUTIO Then SS9=RIGHT("........................."+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
 If X.UOP=IUFET Then SS9=RIGHT("....................READ "+"("+Hex(X.ADDR,4)+")="+Hex(X.CODE,2)+" "+Mid$(O$,XMNEM(X.TEMP),XMLEN(X.TEMP)),32)  
 If X.UOP=IUDOW Then SS9=RIGHT("....................WRITE "+"("+Hex(X.ADDR,4)+")="+Hex(X.BUS,2)+"   ",32)  
 If X.UOP=IDONE Then SS9=RIGHT("..............................DONE: ",32)'+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" "  
 If X.UOP=IUODEC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
 If X.UOP=IUOINC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
-'If X.UOP=IUOBIT Then SS9=RIGHT(".........................MASK "+BIN(X.TEMP,8)+" ",32)  
+If X.UOP=IUIFF Then SS9=RIGHT("......................... **** INT ENABLED *** ",32)  
 
 If X.UOP=IUAIRIUF Then 
 SS9=".................................................."
@@ -29,8 +46,8 @@ If X.F And XFC Then SS9+="1" Else SS9+="0"
 SS9=RIGHT(SS9+" ",32)
 Else EndIf  
 
-If X.UOP=IUWCW Or X.UOP=IULAQLD Then 'IULTSADD Or X.UOP=IUOSADDC Or X.UOP=IUBCDPV Or X.UOP=IUOBIT Then 
-SS9=".................................................."
+If X.UOP=IDONE Then  ' Or X.UOP=IUOBIT Then 
+SS9=".................................................. DONE "
 If X.FLG And XFS Then SS9+="sz1" Else SS9+="sz0"
 If X.FLG And XFZ Then SS9+="1-5h3-" Else SS9+="0-5h3-"
 If X.FLG And XF5 Then SS9+="1" Else SS9+="0"
@@ -48,12 +65,15 @@ SS7=Right(".................................."+Mid$(Q$,UOPN(X.UOP),UOPL(X.UOP)),
 
 If *(X.LTAK+X.ISEXT)=1 Then Print Right("         "+Right("     "+Str(X.TAK),5)+":"+Right("     "+Str(E0),2)+":"+Hex(X.PC-1,4)+":",16); ELSE Print Right("         "+Right("      :",5)+Right("     ",2)+":    :",16);  
 
+
+
 Print SS1;SS4;SS8;SS7;SS9;" ";
 
 'Print "ACT-PC(";Hex$(X.PC,4);")-";
 Print "WZ=";Hex$(X.W,2);Hex$(X.Z,2);" ";
 Print "T/A=";Hex$(X.T,2);"/";Hex$(X.ALU,2);" ";
-Print "ALU(";HEX(X.ALU,2);"-";Bin(X.ALU,8);")";
+'Print "ALU(";HEX(X.ALU,2);"-";Bin(X.ALU,8);")";
+Print "FLG(";HEX(X.FLG,2);"-";Bin(X.FLG,8);")";
 'Print "ADDER(";Hex$(X.ADDER,4);")-";
 'Print "X.ADDR(";Hex$(X.ADDR,4);")-";
 'Print "A(";BIN$(X.A,8);")-";
@@ -69,38 +89,20 @@ Print "XYS=";Hex$(X.XH,2);Hex$(X.XL,2);",";
 Print "";Hex$(X.YH,2);Hex$(X.YL,2);",";
 Print "";Hex$(X.S,2);Hex$(X.P,2);"";
 Print "*(";Hex$(*(X.MEM+X.P+(X.S Shl 8)+1),2);Hex$(*(X.MEM+X.P+(X.S Shl 8)),2);") ";
-
 Print "ABDH'";Hex$((X.EAF Shr 32),2);Hex$((X.EAF And 255),2);"";
 Print ",";Hex$((X.EBC Shr 32),2);Hex$((X.EBC And 255),2);"";
 Print ",";Hex$((X.EDE Shr 32),2);Hex$((X.EDE And 255),2);"";
 Print ",";Hex$((X.EHL Shr 32),2);Hex$((X.EHL And 255),2);" ";
-
 Print "IR=";Hex$(X.I,2);Hex$(X.R,2);"_";Hex$(X.ISINT,1);"/";Hex$(X.IMM,1);"-";Hex$(X.IFF1,1);
-Print
 
-If X.TAK=0 And X.IFF1 Then Print "INT ENABLED"
-If X.TAK=0 And X.IFF1=0 Then Print "INT DISABLED"
+If X.TAK=0 And X.IFF1 Then SCROLLOC:Print "INT ENABLED"
+
+If X.TAK=0 And X.IFF1=0 Then SCROLLOC:Print "INT DISABLED"
 
 If E1 Then If X.UOP=IDONE Or X.UOP=IEXT Then Sleep  
 
-'Print SS1;SS6;SS8;" ";SS5;SS2;SS3;SS4;SS7;SS9
-
-'Print " ";BIN(SEL Shr 24,8);" " 
-'Print RESULTS HERE '| 7 6 5 4 3 2 1 0 | '| S Z Y H X P N C |
-'Print "BUS(";Hex$(XBUS,2);")-";
-'Print "PC(";Hex$(XPC-1,4);")"';'-";
-'Print "SUBPC(";Hex$(XSUBST,4);")-";
-'Print "*HL(";Hex$(*(PMEM+XL+(XH Shl 8)),2);")-";
-'Print "*DE(";Hex$(*(PMEM+XE+(XD Shl 8)),2);")-";
-'Print "IX(";Hex$(XXH,2);Hex$(XXL,2);")-";
-'Print "IY(";Hex$(XYH,2);Hex$(XYL,2);")-";
-'Print "A(";HEX$(XA,2);")-";
-'Print "IM(";Hex$(XIMM,2);")-";
 
 
-'If ISPAR Then ISPAR-=1:GoTo FORCEACT
-'If ISEXT=3 Then ISEXT=1:GoTo FORCEACT
-'If ISEXT=1 Then ISEXT=2:GoTo FORCEACT
 End Sub
 
 
@@ -197,7 +199,7 @@ EMUSETUP
 
 Sub EMUGENLUT() Static
 
-Dim As Unsigned Long LALU, HALU, BCNT, ALUL,ALUR,DAAC,DAAH,DAAN,LDAA,HDAA
+Dim As Unsigned Long LALU, HALU, BCNT, ALUL,ALUR,DAAC,DAAH,DAAN,LDAA,HDAA,DAAH2,DAAT,LDAAO
 Dim As Unsigned Byte PE, RESF
 Dim As Unsigned Integer PEW
 
@@ -219,34 +221,80 @@ T3 And= 1:T3 Xor= 1:*(PFLAG+T1)=T3 Shl 2:Next ' PARITY IS SET WHEN BIT COUNT EVE
 
 ' GENERATE FLAGS ONLY, LEFT OPERAND IS LOW BYTE, RIGHT OPERAND IS HIGH BYTE, HAVE DUAL NC/C AND SINGLE LUTS
 
-For ALUL = 0 To 255: For ALUR = 0 To 255
+'Dim NHC
 
+For ALUL = 0 To 255: For ALUR = 0 To 255
 '| 7 6 5 4 3 2 1 0 | ' - - DAA ALUOP - - ' DAA SZ5*3P-* 
 '| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
-If ALUR And XFC Then DAAC=1 Else DAAC=0
-If ALUR And XFN Then DAAN=1 Else DAAN=0
-If ALUR And XFH Then DAAH=1 Else DAAH=0
-LDAA=ALUL And 15
-HDAA=(ALUL Shr 4) And 15
-RESF=0
-If DAAN=0 And (LDAA>9 Or DAAH=1) Then LDAA+=&H06 
-If DAAN=0 And LDAA>9  Then HDAA+=1:LDAA And= 15:RESF+=XFH ' SET H HERE OR NOT
+If ALUR And XFC Then DAAC=1 Else DAAC=0 EndIf:If ALUR And XFN Then DAAN=1 Else DAAN=0 EndIf:If ALUR And XFH Then DAAH=1 Else DAAH=0 EndIf:
+LDAA=ALUL And 15:HDAA=(ALUL Shr 4) And 15:RESF=0
+LDAAO=LDAA
+' LOOKS OK
+If DAAN=0 And LDAA>9  And DAAH=1 Then LDAA+=&H06:HDAA+=1:RESF OR= XFH 
+If DAAN=0 And LDAA>9  And DAAH=0 Then LDAA+=&H06:HDAA+=1:RESF OR= XFH
+If DAAN=0 And LDAA<10 And DAAH=1 Then LDAA+=&H06:
+' LOOKS OK
+If DAAN=1 And (LDAA>9 Or DAAH=1) Then LDAA-=&H06:DAAH2=1 Else DAAH2=0':RESF+=XFH
+If DAAN=1 And LDAA>9  Then HDAA-=1:RESF+=XFH ' SET H HERE OR NOT
 
-If DAAN=1 And (LDAA>9 Or DAAH=1) Then LDAA-=&H06
-If DAAN=1 And LDAA>9  Then HDAA-=1:LDAA And= 15:RESF+=XFH ' SET H HERE OR NOT
+LDAA And= 15
 
-If DAAN=0 And (HDAA>9 Or DAAC=1) Then HDAA+=&H06 
-If DAAN=0 And HDAA>9 Then HDAA And= 15:RESF+=XFC ' SET C HERE OR NOT
+DAAT=HDAA-&H06
 
-If DAAN=1 And (HDAA>9 Or DAAC=1) Then HDAA-=&H06:RESF+=XFC '!!! IMPORTANT THAT CARRY SETS IF >9 OR CARRY, NOT IF ONLY >9 
-If DAAN=1 And HDAA>9 Then HDAA And= 15 ' SET C HERE OR NOT
+If DAAN=0 And (HDAA>9 Or DAAC=1) Then HDAA+=&H06:RESF OR=XFC 
 
-PE=LDAA+(HDAA Shl 4)
+If DAAN=1 And DAAC=1 Then HDAA-=&H06:RESF OR= XFC  
+
+If DAAN=1 And DAAC=0 And DAAH2=1 And LDAA>9 Then
+Select Case HDAA
+Case &H9 :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
+Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HF :  Exit Select
+End Select
+Else EndIf
+
+If DAAN=1 And DAAC=0 And DAAH2=1 And LDAA<10 Then
+Select Case HDAA
+Case &H9 :  
+	If DAAT=3 Then 
+		If DAAH=0 Then 
+			HDAA-=&H06:RESF OR= XFC 
+			Else
+			 If LDAAO<10 Then Else HDAA-=&H06:RESF OR= XFC ENDIF' CONTROVERSY HERE
+			EndIf
+	Else 
+	HDAA-=&H06:RESF OR= XFC: Exit Select ' CONTROVERSY HERE
+	EndIf
+Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
+Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HF :  HDAA-=&H06:RESF OR= XFC: Exit Select
+End Select
+Else EndIf
+
+If DAAN=1 And DAAC=0 And DAAH2=0 And LDAA<10 Then
+Select Case HDAA
+Case &H9 :  If DAAT=3 Then Else HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
+Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
+Case &HF :  HDAA-=&H06:RESF OR= XFC: Exit Select
+End Select
+Else EndIf
+
+HDAA And= 15
+PE=LDAA+(HDAA Shl 4):If PE=0 Then RESF+=XFZ ' SET Z
 RESF+=(ALUR And XFN)+(PE And(XFS+XF5+XF3))+*(PFLAG+PE) ' GET OLD N,S,5,3 LUT PARITY
+*(PDAA+(ALUR Shl 9)+(ALUL Shl 1))=PE:*(PDAA+(ALUR Shl 9)+(ALUL Shl 1)+1)=RESF ' LUT DONE
 
-If PE=0 Then RESF+=XFZ ' SET Z
-*(PDAA+(ALUR Shl 9)+(ALUL Shl 1))=PE ' VALUE LUT DONE
-*(PDAA+(ALUR Shl 9)+(ALUL Shl 1)+1)=RESF ' FLAGS LUT DONE
 
 '| 7 6 5 4 3 2 1 0 | ' - - ADD ALUOP - - , ADC VARY THAT ADD RESULT=LEFT+RIGHT+CARRY
 '| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
@@ -437,7 +485,12 @@ Q$+="86_UPFDD_":Q$+="87_UPFFD_":Q$+="88_UPFCB_":Q$+="89_UPFED_":Q$+="90_UPFDC_":
 Q$+="97_UXLWR_":Q$+="98_UYHWR_":Q$+="99_UYLWR_":Q$+="100_ULLRB_":Q$+="101_ULLRC_":Q$+="102_ULLRD_":Q$+="103_ULLRE_":Q$+="104_ULLRH_":Q$+="105_ULLRL_":Q$+="106_ULLRT_":Q$+="107_ULLRA_":Q$+="108_ULLXL_":
 Q$+="109_ULLXH_":Q$+="110_ULLYL_":Q$+="111_ULLYH_":Q$+="112_ULLPL_":Q$+="113_ULLPH_":Q$+="114_ULRIA_":Q$+="115_ULRRA_":Q$+="116_ULRBL_":Q$+="117_ULRCL_":Q$+="118_ULRDL_":Q$+="119_ULREL_":Q$+="120_ULRHL_":
 Q$+="121_ULRLL_":Q$+="122_ULRTL_":Q$+="123_ULRAL_":Q$+="124_ULRZL_":Q$+="125_ULRWL_":Q$+="126_ULXLL_":Q$+="127_ULXHL_":Q$+="128_ULYLL_":Q$+="129_ULYHL_":Q$+="130_ULRFT_":Q$+="131_ULXLT_":Q$+="132_ULXHT_":
-Q$+="133_ULYHT_":Q$+="134_ULYLT_":Q$+="135_ULTXH_":Q$+="136_ULTXL_":Q$+="137_ULTYH_":Q$+="138_ULTYL_":Q$+="139_ULBADD_":Q$+="140_ULCADD_":Q$+="141_ULDADD_":Q$+="142_ULEADD_":Q$+="143_ULHADD_":
+Q$+="133_ULYHT_":Q$+="134_ULYLT_":
+Q$+="135_ULTXL_":
+Q$+="136_ULTXH_":
+Q$+="137_ULTYL_":
+Q$+="138_ULTYH_":
+Q$+="139_ULBADD_":Q$+="140_ULCADD_":Q$+="141_ULDADD_":Q$+="142_ULEADD_":Q$+="143_ULHADD_":
 Q$+="144_ULLADD_":Q$+="145_ULTADD_":Q$+="146_ULAADD_":Q$+="147_ULXSADD_":Q$+="148_ULXPADD_":Q$+="149_ULXHADD_":Q$+="150_ULXLADD_":Q$+="151_ULYHADD_":Q$+="152_ULYLADD_":Q$+="153_ULBADC_":Q$+="154_ULCADC_":
 Q$+="155_ULDADC_":Q$+="156_ULEADC_":Q$+="157_ULHADC_":Q$+="158_ULLADC_":Q$+="159_ULTADC_":Q$+="160_ULAADC_":Q$+="161_ULXSADC_":Q$+="162_ULXPADC_":Q$+="163_ULXHADC_":Q$+="164_ULXLADC_":Q$+="165_ULYHADC_":
 Q$+="166_ULYLADC_":Q$+="167_ULBSUB_":Q$+="168_ULCSUB_":Q$+="169_ULDSUB_":Q$+="170_ULESUB_":Q$+="171_ULHSUB_":Q$+="172_ULLSUB_":Q$+="173_ULTSUB_":Q$+="174_ULASUB_":Q$+="175_ULXSSUB_":Q$+="176_ULXPSUB_":
@@ -471,6 +524,7 @@ Q$+="338_ULZ30_":
 Q$+="339_ULZ38_":
 Q$+="340_UWBITQ_":
 Q$+="341_SKIP6Z_":
+Q$+="342_ULWQLD_":
 
 Q$+="!"
 
