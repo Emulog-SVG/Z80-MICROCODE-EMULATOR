@@ -87,10 +87,12 @@ Print "DE=";Hex$(X.D,2);Hex$(X.E,2);" ";
 'Print "(";Hex$(*(X.MEM+X.E+(X.D Shl 8)+1),2);Hex$(*(X.MEM+X.E+(X.D Shl 8)),2);")"; '*DE
 Print "HL=";Hex$(X.H,2);Hex$(X.L,2);'" ";
 Print "(";Hex$(*(X.MEM+X.L+(X.H Shl 8)),2);")"; '*HL
-Print "XYS=";Hex$(X.XH,2);Hex$(X.XL,2);",";
-Print "";Hex$(X.YH,2);Hex$(X.YL,2);",";
-Print "";Hex$(X.S,2);Hex$(X.P,2);"";
-Print "*(";Hex$(*(X.MEM+X.P+(X.S Shl 8)+1),2);Hex$(*(X.MEM+X.P+(X.S Shl 8)),2);") ";
+
+'Print "XYS=";Hex$(X.XH,2);Hex$(X.XL,2);",";
+'Print "";Hex$(X.YH,2);Hex$(X.YL,2);",";
+'Print "";Hex$(X.S,2);Hex$(X.P,2);"";
+'Print "*(";Hex$(*(X.MEM+X.P+(X.S Shl 8)+1),2);Hex$(*(X.MEM+X.P+(X.S Shl 8)),2);") ";
+
 'Print "ABDH'";Hex$((X.EAF Shr 32),2);Hex$((X.EAF And 255),2);"";
 'Print ",";Hex$((X.EBC Shr 32),2);Hex$((X.EBC And 255),2);"";
 'Print ",";Hex$((X.EDE Shr 32),2);Hex$((X.EDE And 255),2);"";
@@ -485,7 +487,8 @@ Q$+="341_SKIP6Z_":
 Q$+="342_ULWQLD_":
 Q$+="343_UOFRXD_":
 Q$+="344_UFHLZ_":
-Q$+="344_ULTCPX_":
+Q$+="345_ULTCPX_":
+Q$+="346_ULLRW_":
 
 Q$+="!"
 
