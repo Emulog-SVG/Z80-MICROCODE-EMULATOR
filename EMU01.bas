@@ -7,9 +7,9 @@ FreeConsole()
 Declare Function GETPTR(SIZE As ULongInt,OFFS As ULongInt) As Unsigned Byte Ptr 
 
 ' - - JUST SCREEN INIT HERE
-ScreenRes 1024,768+32,32
+ScreenRes 2048,768+32,32
 'ScreenRes 2432,960,32,2
-Width 1024/8, 768/16 '' Use 8*14 font
+Width 2048/8, 768/16 '' Use 8*14 font
 
 ' - - TEMP USE VARS
 Dim Shared As Unsigned Long T1,T2,T3,T4,T5,T6,T7,T8,T9,T0,E1,E2,E3,E4,E5,E6,E7,E8,E9,E0,CYC,TSCRX,TSCRY
@@ -115,7 +115,8 @@ Dim Shared As Const ULong IUNWR=301,IUTIO=302,IUPOW=303,IUFWR=304,IUONEG=305,IUL
 Dim Shared As Const ULong IUOQIO=309,IUORVN=310,IULANLL=311,IULTNLL=312,IULANLH=313,IULTNHL=314
 Dim Shared As Const ULong IUIM0=315,IUIM1=316,IUIM2=317,IULAQLD=318,IULTCPQ=319,IUOQPV=320 
 Dim Shared As Const ULong IUADDWZ=321,IUTADDQI=322,IUTADDQD=323,IULLRZ=324,IDONE=325,IPAR=326,IEXT=327
-Dim Shared As Const ULong IUIFF=328,IUIMRQ=329,IUIMFET=330,IULWI=331,IULZ00=332,IUWBITQ=340,ISKIP6Z=341,IULWQLD=342
+Dim Shared As Const ULong IUIFF=328,IUIMRQ=329,IUIMFET=330,IULWI=331,IULZ00=332
+Dim Shared As Const ULong IUWBITQ=340,ISKIP6Z=341,IULWQLD=342,IUOFRXD=343,IUFHLZ=344,IULTCPX=345
 
 ' EMULATION LUTs
 Dim Shared As Unsigned Byte Ptr PFLAG,PADD,PSUB,PAND,PXOR,PPOR,PPCP
@@ -124,7 +125,7 @@ Dim Shared As Unsigned Byte Ptr PRLC,PRRC,PRL,PRR,PSLA,PSRA,PSLL,PSRL,PDAA
 Dim Shared As Const ULong XDD=256,XFD=512,XCB=768,XED=1024,XDDCB=1280,XFDCB=1536
 Dim Shared As Const ULong XFS=128,XFZ=64,XF5=32,XFH=16,XF3=8,XFP=4,XFN=2,XFC=1,XLDIR=7,XCPIR=7,XMAIN=2,XXDCB=10,XDJNZ=6
 Dim Shared As Const ULong URB=7-0,URC=7-1,URD=7-2,URE=7-3,URH=7-4,URL=7-5,URA=7-7
-Dim Shared As Const ULong USH=5,USL=4,UYH=3,UYL=2,UXH=1,UXL=0
+Dim Shared As Const ULong USH=5,USL=4,UYH=1,UYL=0,UXH=3,UXL=2
 Dim Shared As ULongInt Ptr MAIN,DD,FD,CB,DDCB,FDCB,ED,PROOT
 
 Dim Shared As Const ULong CADD=0,CSUB=131072,CAND=262144,CXOR=327680,COR=393216,CCP=458752
@@ -198,30 +199,25 @@ EXTL(10)=0
 EXTL(11)=0 ' lets done be xtra state  
 EXTL(12)=0 ' TAK SKIPPERS MUST HERE  
 
-
-' TEST SEQs HERE
-F2=0:For F1=&H00 To 1:
-
-
-Next   
-
-'X.XH=&H21:X.XL=&H00 'IX 03D4 
-'X.YH=&H31:X.YL=&H00 'IY 5C3A
-
 SEC=Timer
 
 
-CYC=3500000*200
+CYC=1'3500000*200
 X.INTL=71680'69888 '
 X.INTC=X.INT1
 X.TAK=0 
 
 GoTo SKIPDAA
+
 T4=0
 For T2=0 To 255
 T3=0:Print " NUM=";T2
-For T1=0 To 31 Step 1
-X.ALU=*(X.DAA+T2+(T1 Shl 8)):X.FLG=X.ALU Shr 8:X.ALU And= &HFF
+For T1=0 To 255
+
+X.FLG=*(PADD+(T2 Shl 9)+(T1 Shl 1)+1)
+X.ALU=T1+T2+1
+X.ALU And= &HFF
+
 T3+=X.ALU+X.FLG
 K$="                                  "
 If T1 And XFH Then K+="H"
@@ -241,23 +237,82 @@ Sleep:End
 
 SKIPDAA:
 
-E1=1
 TSCRX=2176:TSCRY=960
 E5=TSCRX*15
-E1=1:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 
+ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 
+
+filePtr = fopen("ELITE_PDOC.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
+X.SUBST=&H82AE:X.PC=X.SUBST:
+X.CUR=PMOS:
+X.PREFIX=0:X.ISEXT=0:X.CUROFF=XMAIN:X.IMM=1:X.IFF1=0:X.ISINT=0
+X.TAK=10680-1
+X.A=&H41:X.FLG=&H14:X.F=X.FLG:X.EAF=(&HA9 SHL 32)+&HAC 
+X.B=&H10:X.C=&HCC:X.EBC=(&H20 SHL 32)+&HB3
+X.D=&HDD:X.E=&HEE:X.EDE=(&HB3 SHL 32)+&H56 
+X.H=&H88:X.L=&H00:X.EHL=(&H87 SHL 32)+&H75 
+X.XH=&HDD:X.XL=&H88
+X.YH=&HFD:X.YL=&H77
+X.I=&H3F:X.R=&HAF
+X.S=&H88:X.P=&H00
+
+' - - TEST SEQ HERE - - - - 
+
+GoTo NOTEST
+F2=0:For F1=&H00 To 1:
+
+*(X.MEM+F2)=(&H11):F2+=1:*(X.MEM+F2)=(&H00):F2+=1:*(X.MEM+F2)=(&H00):F2+=1
+*(X.MEM+F2)=(&H21):F2+=1:*(X.MEM+F2)=(&H00):F2+=1:*(X.MEM+F2)=(&H10):F2+=1
+*(X.MEM+F2)=(&H01):F2+=1:*(X.MEM+F2)=(&H02):F2+=1:*(X.MEM+F2)=(&H00):F2+=1
+*(X.MEM+F2)=(&HC5):F2+=1
+*(X.MEM+F2)=(&HF1):F2+=1
+*(X.MEM+F2)=(&H7B):F2+=1
+*(X.MEM+F2)=(&HED):F2+=1:*(X.MEM+F2)=(&HB1):F2+=1
+*(X.MEM+F2)=(&H00):F2+=1:
+*(X.MEM+F2)=(&H1C):F2+=1:
+*(X.MEM+F2)=(&H20):F2+=1:*(X.MEM+F2)=(&HF1):F2+=1:
+Next   
+
+NOTEST:
+
+'E1=1:'X.SUBST=&H0000:X.PC=X.SUBST:
+
+
+For T1=0 To 255
+*(X.IORD+(T1 Shl 8)+&HFE)=&HBF
+Next
 
 Do
+'*(X.IORD+&HAAFE)=&HBF ' IN A,*
+'*(X.IORD+&HBBFE)=&HBF ' IN R,(C) AND FULL 0-255 FOR INIR
 
-If X.ISEXT And 1 Then X.UOP=*X.XCUR:X.XCUR+=1 Else X.UOP=*X.CUR:X.CUR+=1:If X.TAK=X.INTL Then X.TAK=0:E4+=1:If X.IFF1 Then X.ISINT=1 Else EndIf:EndIf
+If X.ISEXT And 1 Then 
+	X.UOP=*X.XCUR:X.XCUR+=1 
+	Else 
+	X.UOP=*X.CUR:X.CUR+=1:
+	If X.TAK=X.INTL Then 
+	X.TAK=0
+	If X.IFF1 Then X.ISINT=1 
+	SCRSHOW2
+K$=InKey
+If K=" " Then CYC=0
+If K="Y" Then *(X.IORD+&HDFFE)=&B11111110:SCROLLOC:Print " *** Y *** "' Else *(X.IORD+&HDFFE)=&B11111111:Print "                   " 
+If K="P" Then SCROLLOC:Print " *** PAUSE *** ":Sleep 
+	Else EndIf:
+EndIf
 #Include "EMU_MICROACT.EXT"
 
+If X.UOP=IUTIO And K$="" Then 
+For T1=0 To 255
+*(X.IORD+(T1 Shl 8)+&HFE)=&HBF
+Next
+Else EndIf
 
-'If X.UOP=IUAPCI And X.ADDR=&H0E68 And E8=0 Then E8=1:X.TAK+=0:E1=1:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 Else EndIf
+GoTo FAST
 
 If E3=1 And X.UOP=IUAPCI And X.ADDR=&H8291 Then E1=1:E3=0
 If E3=2 And X.UOP=334 Then E1=1:E3=0
-
-
+If E3=3 And X.UOP=IULTCPQ Then E1=1:E3=0
+If E3=4 And X.UOP=IUTIO Then E1=1:E3=0
 If E3=5 And ((X.B Shl 8)+X.C)=0  Then E1=1:E3=0
 If E3=6 And ((X.H Shl 8)+X.L)<&H4000 Then E1=1:E3=0
 If E3=7 And (X.B)=0  Then E1=1:E3=0
@@ -265,68 +320,21 @@ If E3=8 And X.TAK>(X.INTL-40)  Then E1=1:E3=0
 If E3=9 And X.UOP=SIGUWZ Then E1=1:E3=0
 If E3=10 Then E1=1:E3=0:ScreenRes TSCRX,TSCRY,32:Width TSCRX/8, TSCRY/16 Else EndIf
 
-
-If E1 Then 
-
-If E7 Then 
-	E7-=1: 'SCRSHOW2:
-	Locate 59,65:Print E7;" ";X.TAK;"    " 
-	Else 
-
-SCROLLOC:SHOWINFO:SCRSHOW2
-EndIf
-
-Else 
-EndIf 
+If E1 Then SCROLLOC:SHOWINFO:SCRSHOW2
 
 
-
-If E3=99 Then 
-filePtr = fopen("ELITE_PDOC.BIN", "rb"):T1=fread(pmem, 65536,1 , fileptr):fclose (fileptr)
-
-X.CUR=PMOS:X.SUBST=32768:X.PC=32768:
-X.PREFIX=0:X.ISEXT=0:X.CUROFF=XMAIN:X.IMM=1:X.IFF1=1:X.ISINT=0:E3=0
-
-X.TAK=1010-1
-
-X.I=&H3F:X.R=&H64
-
-X.S=&H7F:X.P=&HF0
-
-X.XH=&H03:X.XL=&HD4 'IX 03D4
-X.YH=&H5C:X.YL=&H3A 'IY 5C3A
-
-
-'X.A=&H00:X.FLG=&H5C 
-'X.EAF=(&H00 SHL 32)+&H44 
-'X.B=&H17:X.C=&H18
-'X.EBC=(&H00 SHL 32)+&H4B
-'X.D=&H5C:X.E=&HB9 
-'X.EDE=(&H00 SHL 32)+&H06 
-'X.H=&H5C:X.L=&HB7 
-'X.EHL=(&H10 SHL 32)+&H7F 
-
-
-CYC=0
-Else EndIf
-
-E2+=1:If E2>150000 And E1=0 And E3=0 Then SCRSHOW2:SCROLLOC:Print "CYCLE=";CYC;" INT=";X.TAK;"    ":E2=0
-
-'If E2>70000 Then SCRSHOW:Locate 97,1:Print "CYCLE=";CYC;" INT=";X.TAK;"    ":E2=0 Else E2+=1 EndIf
-
-CYC-=1:
+E0+=*(X.LTAK+X.ISEXT)
 K$=InKey
 If K=" " Then CYC=0
-
-If K="1" Then E1=0:E3=1:SCROLLOC:Print "*** 1 *** 8291 *** FRAME ";E4
-If K="2" Then E1=0:E3=2:SCROLLOC:Print "*** 2 *** RST10 *** FRAME ";E4
-
+If K="1" Then E1=0:E3=1:SCROLLOC:Print "*** 1 *** 8291 ***"
+If K="2" Then E1=0:E3=2:SCROLLOC:Print "*** 2 *** RST10 ***"
+If K="3" Then E1=0:E3=3:SCROLLOC:Print "*** 3 *** ULTCPQ ***"
+If K="4" Then E1=0:E3=4:SCROLLOC:Print "*** 4 *** UTIO PORT READ ***"
 
 If K="5" Then E1=0:E3=5:SCROLLOC:Print "*** 5 *** KILL LDIR ***"
 If K="7" Then E1=0:E3=7:SCROLLOC:Print "*** 7 *** KILL DJNZ ***"
 If K="8" Then E1=0:E3=8:SCROLLOC:Print "*** 8 *** SEEK INT START ***"
 If K="9" Then E1=0:E3=9:SCROLLOC:Print "*** 9 *** USEWZ SEEK ***"
-
 If K="Z" Then E3=99:SCROLLOC:Print "*** START *** "
 If K="Y" Then *(X.IORD+&HDFFE)=&B11111110:SCROLLOC:Print " *** Y *** "' Else *(X.IORD+&HDFFE)=&B11111111:Print "                   " 
 If K="U" Then *(X.IORD+&HDFFE)=&B11111101:SCROLLOC:Print " *** U *** "' Else *(X.IORD+&HDFFE)=&B11111111:Print "                   " 
@@ -338,12 +346,9 @@ If K="O" Then X.TAK-=1
 If K="P" Then SCROLLOC:Print " *** PAUSE *** ":Sleep 
 
 
-'If X.ISINT Then *(X.IORD+&HDFFE)=(1 Shl (Rnd*15))Xor 255
-
-E0+=*(X.LTAK+X.ISEXT)
+FAST:
 X.TAK+=*(X.LTAK+X.ISEXT)
 X.ISEXT=*(X.LEXT+X.ISEXT)
-
 Loop Until CYC=0
 
 SEC=(Timer-SEC)

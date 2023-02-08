@@ -25,13 +25,15 @@ Sub SHOWINFO() Static
 SS9=LEFT("                                                          ",32)
 
 If X.UOP=IUFET Then E0=2':SS9=RIGHT("........................."+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" ",32)
-If X.UOP=IUTRD Or X.UOP=IUTIO Then SS9=RIGHT("........................."+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
+If X.UOP=IUTRD Then SS9=RIGHT("........................."+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
+If X.UOP=IUTIO Then SS9=RIGHT("......................... **** PORT READ *** "+"("+Hex(X.ADDR,4)+")="+Hex(X.T,2)+"   ",32)
 If X.UOP=IUFET Then SS9=RIGHT("....................READ "+"("+Hex(X.ADDR,4)+")="+Hex(X.CODE,2)+" "+Mid$(O$,XMNEM(X.TEMP),XMLEN(X.TEMP)),32)  
 If X.UOP=IUDOW Then SS9=RIGHT("....................WRITE "+"("+Hex(X.ADDR,4)+")="+Hex(X.BUS,2)+"   ",32)  
 If X.UOP=IDONE Then SS9=RIGHT("..............................DONE: ",32)'+" CO "+Hex(X.CUROFF,1)+" PF "+Hex(X.PREFIX,4)+" IP "+Hex(X.ISPFX,1)+" "  
 If X.UOP=IUODEC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
 If X.UOP=IUOINC Then SS9=RIGHT(".........................ALU "+Hex$(X.ALU,2)+" ",32)  
 If X.UOP=IUIFF Then SS9=RIGHT("......................... **** INT ENABLED *** ",32)  
+If X.UOP=IULTCPQ Then E4+=X.FLG  
 
 If X.UOP=IUAIRIUF Then 
 SS9=".................................................."
@@ -71,9 +73,9 @@ Print SS1;SS4;SS8;SS7;SS9;" ";
 
 'Print "ACT-PC(";Hex$(X.PC,4);")-";
 Print "WZ=";Hex$(X.W,2);Hex$(X.Z,2);" ";
-Print "T/A=";Hex$(X.T,2);"/";Hex$(X.ALU,2);" ";
+Print "T/A=";Hex$(X.T,2);"/";Hex$(X.ALU,2);"-*";Str(X.ALU);"* ";
 'Print "ALU(";HEX(X.ALU,2);"-";Bin(X.ALU,8);")";
-Print "FLG(";HEX(X.FLG,2);"-";Bin(X.FLG,8);")";
+Print "FLG(";HEX(X.FLG,2);"-";Bin(X.FLG,8);"-";STR(X.FLG);")";
 'Print "ADDER(";Hex$(X.ADDER,4);")-";
 'Print "X.ADDR(";Hex$(X.ADDR,4);")-";
 'Print "A(";BIN$(X.A,8);")-";
@@ -89,11 +91,12 @@ Print "XYS=";Hex$(X.XH,2);Hex$(X.XL,2);",";
 Print "";Hex$(X.YH,2);Hex$(X.YL,2);",";
 Print "";Hex$(X.S,2);Hex$(X.P,2);"";
 Print "*(";Hex$(*(X.MEM+X.P+(X.S Shl 8)+1),2);Hex$(*(X.MEM+X.P+(X.S Shl 8)),2);") ";
-Print "ABDH'";Hex$((X.EAF Shr 32),2);Hex$((X.EAF And 255),2);"";
-Print ",";Hex$((X.EBC Shr 32),2);Hex$((X.EBC And 255),2);"";
-Print ",";Hex$((X.EDE Shr 32),2);Hex$((X.EDE And 255),2);"";
-Print ",";Hex$((X.EHL Shr 32),2);Hex$((X.EHL And 255),2);" ";
-Print "IR=";Hex$(X.I,2);Hex$(X.R,2);"_";Hex$(X.ISINT,1);"/";Hex$(X.IMM,1);"-";Hex$(X.IFF1,1);
+'Print "ABDH'";Hex$((X.EAF Shr 32),2);Hex$((X.EAF And 255),2);"";
+'Print ",";Hex$((X.EBC Shr 32),2);Hex$((X.EBC And 255),2);"";
+'Print ",";Hex$((X.EDE Shr 32),2);Hex$((X.EDE And 255),2);"";
+'Print ",";Hex$((X.EHL Shr 32),2);Hex$((X.EHL And 255),2);" ";
+'Print "IR=";Hex$(X.I,2);Hex$(X.R,2);"_";Hex$(X.ISINT,1);"/";Hex$(X.IMM,1);"-";Hex$(X.IFF1,1);
+Print " E4=";E4
 
 If X.TAK=0 And X.IFF1 Then SCROLLOC:Print "INT ENABLED"
 
@@ -199,7 +202,7 @@ EMUSETUP
 
 Sub EMUGENLUT() Static
 
-Dim As Unsigned Long LALU, HALU, BCNT, ALUL,ALUR,DAAC,DAAH,DAAN,LDAA,HDAA,DAAH2,DAAT,LDAAO
+Dim As Unsigned Long LALU, HALU, BCNT, ALUL,ALUR,DAAC,DAAH,DAAN,LDAA,HDAA,DAAHI,HDAAC,LDAAO,CORRH
 Dim As Unsigned Byte PE, RESF
 Dim As Unsigned Integer PEW
 
@@ -224,74 +227,29 @@ T3 And= 1:T3 Xor= 1:*(PFLAG+T1)=T3 Shl 2:Next ' PARITY IS SET WHEN BIT COUNT EVE
 'Dim NHC
 
 For ALUL = 0 To 255: For ALUR = 0 To 255
+
 '| 7 6 5 4 3 2 1 0 | ' - - DAA ALUOP - - ' DAA SZ5*3P-* 
 '| S Z Y H X P N C | S=128, Z=64, F5=32, H=16, F3=8, PV=4, N=2, C=1
-If ALUR And XFC Then DAAC=1 Else DAAC=0 EndIf:If ALUR And XFN Then DAAN=1 Else DAAN=0 EndIf:If ALUR And XFH Then DAAH=1 Else DAAH=0 EndIf:
-LDAA=ALUL And 15:HDAA=(ALUL Shr 4) And 15:RESF=0
-LDAAO=LDAA
-' LOOKS OK
-If DAAN=0 And LDAA>9  And DAAH=1 Then LDAA+=&H06:HDAA+=1:RESF OR= XFH 
-If DAAN=0 And LDAA>9  And DAAH=0 Then LDAA+=&H06:HDAA+=1:RESF OR= XFH
+DAAC=ALUR And XFC:DAAN=(ALUR And XFN) Shr 1:DAAH=(ALUR And XFH) Shr 4
+LDAA=ALUL And 15:LDAAO=LDAA:HDAA=(ALUL Shr 4) And 15:RESF=0
+' LOW NIBBLE
+If DAAN=0 And LDAA>9 Then LDAA+=&H06:HDAA+=1:RESF OR= XFH 
 If DAAN=0 And LDAA<10 And DAAH=1 Then LDAA+=&H06:
-' LOOKS OK
-If DAAN=1 And (LDAA>9 Or DAAH=1) Then LDAA-=&H06:DAAH2=1 Else DAAH2=0':RESF+=XFH
+If DAAN=1 And (LDAA>9 Or DAAH=1) Then LDAA-=&H06:DAAHI=1 Else DAAHI=0':RESF+=XFH SET ALTERNATE H
 If DAAN=1 And LDAA>9  Then HDAA-=1:RESF+=XFH ' SET H HERE OR NOT
-
-LDAA And= 15
-
-DAAT=HDAA-&H06
-
+LDAA And= 15:HDAAC=HDAA-&H06:CORRH=0
+' HIGH NIBBLE
 If DAAN=0 And (HDAA>9 Or DAAC=1) Then HDAA+=&H06:RESF OR=XFC 
-
-If DAAN=1 And DAAC=1 Then HDAA-=&H06:RESF OR= XFC  
-
-If DAAN=1 And DAAC=0 And DAAH2=1 And LDAA>9 Then
-Select Case HDAA
-Case &H9 :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
-Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HF :  Exit Select
-End Select
-Else EndIf
-
-If DAAN=1 And DAAC=0 And DAAH2=1 And LDAA<10 Then
-Select Case HDAA
-Case &H9 :  
-	If DAAT=3 Then 
-		If DAAH=0 Then 
-			HDAA-=&H06:RESF OR= XFC 
-			Else
-			 If LDAAO<10 Then Else HDAA-=&H06:RESF OR= XFC ENDIF' CONTROVERSY HERE
-			EndIf
-	Else 
-	HDAA-=&H06:RESF OR= XFC: Exit Select ' CONTROVERSY HERE
-	EndIf
-Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
-Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HF :  HDAA-=&H06:RESF OR= XFC: Exit Select
-End Select
-Else EndIf
-
-If DAAN=1 And DAAC=0 And DAAH2=0 And LDAA<10 Then
-Select Case HDAA
-Case &H9 :  If DAAT=3 Then Else HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HA :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HB :  HDAA-=&H06:RESF OR= XFC: Exit Select 
-Case &HC :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HD :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HE :  HDAA-=&H06:RESF OR= XFC: Exit Select
-Case &HF :  HDAA-=&H06:RESF OR= XFC: Exit Select
-End Select
-Else EndIf
-
-HDAA And= 15
-PE=LDAA+(HDAA Shl 4):If PE=0 Then RESF+=XFZ ' SET Z
+If DAAN=1 And DAAC=1 Then CORRH=1
+If DAAN=1 And DAAC=0 And DAAHI=1 And LDAA>9 And HDAA>8 And HDAA<15 Then CORRH=1
+If DAAN=1 And DAAC=0 And DAAHI=1 And LDAA<10 And HDAA>9 Then CORRH=1 
+If DAAN=1 And DAAC=0 And DAAHI=1 And LDAA<10 And HDAA=9 And HDAAC<>3 Then CORRH=1 
+If DAAN=1 And DAAC=0 And DAAHI=1 And LDAA<10 And HDAA=9 And HDAAC=3 And DAAH=0 Then CORRH=1 
+If DAAN=1 And DAAC=0 And DAAHI=1 And LDAA<10 And HDAA=9 And HDAAC=3 And DAAH=1 And LDAAO>9 Then CORRH=1 
+If DAAN=1 And DAAC=0 And DAAHI=0 And LDAA<10 And HDAA>9 Then CORRH=1
+If DAAN=1 And DAAC=0 And DAAHI=0 And LDAA<10 And HDAA=9 And HDAAC<>3 Then CORRH=1
+If CORRH Then HDAA-=&H06:RESF Or=XFC
+PE=LDAA+((HDAA And 15) Shl 4):If PE=0 Then RESF+=XFZ ' SET Z
 RESF+=(ALUR And XFN)+(PE And(XFS+XF5+XF3))+*(PFLAG+PE) ' GET OLD N,S,5,3 LUT PARITY
 *(PDAA+(ALUR Shl 9)+(ALUL Shl 1))=PE:*(PDAA+(ALUR Shl 9)+(ALUL Shl 1)+1)=RESF ' LUT DONE
 
@@ -314,7 +272,7 @@ If (S1=XFS) And (S2=XFS) And (S3=0) Then RESF+=XFP 'SAME --SIGNS AND RESULT + SO
 PEW=ALUL+ALUR+1:PE=PEW:RESF=PE And (XFS+XF5+XF3) ' COPY BIT 7(S),5 AND 3 'For ADD instructions, N is cleared to 0
 If PE=0 Then RESF+=XFZ ' SET Z
 If PEW>255 Then RESF+=XFC ' SET CARRY
-PE=((ALUL And 15)+(ALUR And 15)):If PE>15 Then RESF+=XFH 'HAVE LOW NIBBLE ALU CARRY SO SET H
+PE=((ALUL And 15)+(ALUR And 15))+1:If PE>15 Then RESF+=XFH 'HAVE LOW NIBBLE+C ALU CARRY SO SET H
 S1=ALUL And XFS:S2=ALUR And XFS:S3=PEW And XFS 'GET ALL SIGNS
 If (S1=0) And (S2=0) And (S3=XFS) Then RESF+=XFP 'SAME ++SIGNS AND RESULT - SO SET
 If (S1=XFS) And (S2=XFS) And (S3=0) Then RESF+=XFP 'SAME --SIGNS AND RESULT + SO SET
@@ -338,7 +296,7 @@ If (S1=XFS) And (S2=0) And (S3=0) Then RESF+=XFP 'SIGNS ARE -+ AND RESULT + SET 
 PEW=ALUL-ALUR-1:PE=PEW:RESF=(PE And (XFS+XF5+XF3))+XFN ' COPY BIT 7(S),5 AND 3, For SUB instructions, N is set to 1.
 If PE=0 Then RESF+=XFZ ' SET Z
 If PEW>255 Then RESF+=XFC ' SET CARRY OK TESTED
-PE=((ALUL And 15)-(ALUR And 15)): If PE>15 Then RESF+=XFH 'HAVE LOW NIBBLE ALU CARRY SET,SO SET H, SAME AS ADD
+PE=((ALUL And 15)-(ALUR And 15))-1: If PE>15 Then RESF+=XFH 'HAVE LOW NIBBLE-C ALU CARRY SET,SO SET H, SAME AS ADD
 S1=ALUL And XFS:S2=ALUR And XFS:S3=PEW And XFS 'GET ALL SIGNS
 If (S1=0) And (S2=XFS) And (S3=XFS) Then RESF+=XFP 'SIGNS ARE +- AND RESULT - SET OVF
 If (S1=XFS) And (S2=0) And (S3=0) Then RESF+=XFP 'SIGNS ARE -+ AND RESULT + SET OVF
@@ -525,6 +483,9 @@ Q$+="339_ULZ38_":
 Q$+="340_UWBITQ_":
 Q$+="341_SKIP6Z_":
 Q$+="342_ULWQLD_":
+Q$+="343_UOFRXD_":
+Q$+="344_UFHLZ_":
+Q$+="344_ULTCPX_":
 
 Q$+="!"
 
