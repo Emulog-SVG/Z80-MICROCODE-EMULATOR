@@ -1,21 +1,21 @@
 Its sole purpose to play with microcode.
-It is designed barely on Visual Z80 Remix, using its tracelogs
-
+It is designed barely on Visual Z80 Remix, using its tracelogs.
+Undocumented behavior was clarified using other sources.
+VZ80R still have some questions regarding node state calculation.
+I were unable to reproduce Q with it, only partially.
 Z80 is really old piece of hardware, and its design lacks a lot.
 Especially all those block instructions done just with a kitchen-table effort.
 That is why they are so slow. A raw of LDI's perform faster than just LDIR.
-A lot of opcodes have wasted cycled, doing exactly nothing defined.
-
-A microcode model have some assumptions regarding z80 operation.
-Yet it is unclear how M1 cycle starts, especially in the case of RET or JP (HL)
-PC must be increased via ADDER, but it seems that PLA perform some nice tricks.
-While setting the address bus with say BC, also the ADDER loaded with this value.
-Same for DE and SP, and it seems all others, like in JP (IX).
-Then in second half-cycle it perform addition and write result to PC or WZ, there some cases of.
-Especially EX (SP),HL show some tricks.
-Alot of WZ/MEMPTR are just undefined quirks.
+A lot of opcodes have 'wasted' cycles, doing exactly nothing defined.
+This microcode model have assumptions regarding z80 operation, as close to Z80 as possible.
+Say ALU cycle take 3T, LOAD/LOAD-ACT/STORE, and all pipelining exact to tracelogs.
+Pairing uops and entailing parallel uops are easy using PAR: TRI: and EXT: modifiers
+Yet for me it is still unclear how M1 cycle starts, does it take 1 or 2 cycles, 
+is there separate loading of ADDER with PC, or a single LOAD(RR)-SETBUS-INC-STORE(PC) action.
+Both are technically real, for all variations of LOAD, whether it is PC,WZ,HL,IX etc.
+Also there are some non-obvios actions inside Z80, which can be traced only if trying to reproduce microcode.
+Opcodes like EX (SP),HL or IN a,(*) have nice tricks, leading to assumptions crash.
 All LD(**),RR (and reverse) instructions have extra hidden quirk of LD W,A with erratic behavior,
-it is available to explore only in VZ80, yet it affects nothing visible.
-
-So, with any enchancements in mind, the microcode may be well rewtitten and speed gain explored.
-Microcode perform with original Z80 pipelining, so pairing uops and entailing parallel uops are easy.
+its exploranle only in VZ80R, yet it affects nothing visible.
+All undocumented quirks by themselves represent a new game.
+So, with any enchancements in mind, the microcode may be well rewritten and tested, especially speed gain.
