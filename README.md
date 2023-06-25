@@ -6,7 +6,7 @@
 + With any enchancements to Z80 in mind, the microcode may be well rewritten and tested, especially its speed gain.
 ### Version 0.31
 + UOPs executed in pure ASM, each case act, do cycle header, and recalculate jump.
-+ 120-182 MHz effective speed on AMD 5700G, depends on caching.
++ 120-182 MHz effective speed on AMD 5900HX, depends on caching.
 + T-state to UOP exec ratio 1.3 to 1.5.
 + Awhile no IORQ devices, no sound, no file import, no GUI.
 + Image FX filter v2.1 for 6912.
