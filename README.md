@@ -7,16 +7,15 @@
 ### Version 0.46
 + UOPs execution reverted to FreeBasic
 + Pin signaling present, WAIT, BUSRQ, correct INT, etc, almost done
-+ Half T-state action, UOP sequences defined freely
++ Half T-state action, UOP sequences rerwritten except XXIR series
 + Basic file import, state save and load for testing core
 + Basic sequencer interface for debug
 + Awhile no IORQ devices, no sound, no GUI.
 + Image FX filter rewritten v2.2 for 6912, patterns and luma controls active
 ### Version 0.31
++ 120-182 MHz effective speed on 5900HX
 + UOPs executed in pure ASM, each case act, do cycle header, and recalculate jump.
-+ 120-182 MHz effective speed on AMD 5900HX, depends on caching.
 + T-state to UOP exec ratio 1.3 to 1.5.
-+ Awhile no IORQ devices, no sound, no file import, no GUI.
-+ Image FX filter v2.1 for 6912.
 ### Version 0.20
++ Single T-state model, correct ALU states, BUSes and PCR2 unaware
 + Passes Z80FULL(Patrik Rak version)
