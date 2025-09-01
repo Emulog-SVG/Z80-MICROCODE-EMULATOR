@@ -1,0 +1,76 @@
+Sub SHOWINFO() Static
+
+T9=X.OLDCUR-PMOS' UOP PC ACTUAL
+
+SS9=LEFT("                                                          ",24)
+If X.UOP=UULAT Or X.UOP=UULATIO Or X.UOP=IUTRD Then SS9=Right("........................."+"("+Hex(X.PINADDR,4)+")="+Hex(X.PINDATA,2)+"|"+Hex(X.DLATCH,2)+" ",24) Else EndIf
+If X.UOP=UUEXMAIR Then SS9=Right("....................READ "+"("+Hex(X.PINADDR,4)+")="+Hex(X.FULLCODE,4)+" "+MNEM(X.FULLCODE),24) Else EndIf  
+If X.UOP=UDONE Then SS9=Right("..............................DONE: ",24)Else EndIf  
+
+If X.STFEED And 1 Then
+SS1=Right("                                                   ",20)+Hex(T9,4)+Right("                     "+UOPS(X.UOP)+" ",14)+Str(X.TIK)+" "
+Else
+SS1=Hex(T9,4)+Right("                     "+UOPS(X.UOP)+" ",14)+Str(X.TIK)+" "+Right("                                                   ",20)
+EndIf
+'SS1=Hex(T9,4)+Right("                     "+UOPS(X.UOP)+" ",14)+Str(X.TIK)+" "'+Right("                                                   ",20)
+
+Print Hex(X.FULLTAK,8);" ";"UOP=";RIGHT("   "+Str(X.UOP),3);" ";
+
+If X.ACTFEED=X.STFEED Then 
+SS2=Right("           "+Str(X.OLDFEED)+"-"+Str(X.STFEED)+" ",11)
+Else
+SS2=Right("           "+Str(X.OLDFEED)+"-("+Str(X.ACTFEED)+"/"+Str(X.STFEED)+") ",11)
+EndIf
+Print SS2;
+
+'If X.STFEED And 1 Then Print " EXT "; Else Print "     "; ENDIF  
+Print SS1;
+Print SS9;" ";
+
+'SS8=""'"CUR="+RIGHT("......"+Str(X.OLDCUR-PMOS),6)
+'SS8+=" UOP="+RIGHT("...."+Str(X.UOP),3)
+'Print SS8;" ";
+'Print SS4;" ";
+'Print Right("00000"+Str(X.OLDCUR-PMOS),4);"-";Right("0000"+Str(X.UOP),4);
+'SS7=Right(".................................."+UOPS(*X.OLDCUR),10)+" ":Print SS7;" ";
+'Print SS9;" ";
+'Print "AB=";Hex$(X.PINADDR,4);" ";
+'Print "PC=";Hex$(X.PC,4);" ";
+'Print "IX=";Hex$(X.XH,2);Hex$(X.XL,2);" ";
+'Print "IY=";Hex$(X.YH,2);Hex$(X.YL,2);" ";
+'Print "PD=";Hex$(X.PINDATA,2);" ";
+'Print "DL=";Hex$(X.DLATCH,2);" ";
+'Print "WZ=";Hex$((X.W SHL 8)+X.Z,4);" ";
+'Print "(WZ)=";Hex$(*(X.MEM+X.Z+(X.W Shl 8)),2);" ";
+Print "AFF:";Hex$((X.A SHL 8)+X.F,4);Hex$(X.FLG,2);" ";
+'Print " F:";BIN$(X.F,8);":FLG:";Bin$(X.FLG,8);" ";
+Print "ALU=";Hex$(X.ALU,2);"|";Hex$(X.T,2);"|";Hex$(X.ALUA,2);"|";Hex$(X.ALUB,2);"|";Hex$(X.HBUS,2);" ";
+'Print "IR=";Hex$(X.I,2);"-";BIN$(X.R,8);" ";
+'Print "HL=";Hex$(X.H,2);Hex$(X.L,2);" ";
+'Print "(";Hex$(*(X.MEM+X.L+(X.H Shl 8)),2);")";
+'Print "SP=";Hex$(X.S,2);Hex$(X.P,2);" ";
+'Print "BC=";Hex$(X.B,2);Hex$(X.C,2);" ";
+'Print "(HL)=";Hex$(*(X.MEM+X.H*256+X.L),2);" ";
+'Print "AF=";Hex$((X.A SHL 8)+X.F,4);" ";
+'Print "CY-";Hex$(X.CARRY,4);" ";
+'Print "(SP)=";Hex$(*(X.MEM+X.S*256+X.P+1),2);Hex$(*(X.MEM+X.S*256+X.P+0),2);" ";
+'Print "WZ=";Hex$((X.W SHL 8)+X.Z,4);" ";
+'Print "AF=";Hex$((X.A SHL 8)+X.F,4);" ";
+'Print "SU=";Hex$(X.SUBST,4);" ";
+'Print "PD=";Hex$(X.PINDATA,2);" ";
+'Print "BC=";Hex$((X.B SHL 8)+X.C,4);" ";
+'Print "ADDER=";Hex$(X.ADDER,4);" ";
+'Print "ADDES=";Hex$(X.ADDES,4);" ";
+'Print "DL=";Hex$(X.DLATCH,2);" ";
+'Print "HBLB=";Hex$(X.HBUS,2);Hex$(X.LBUS,2);" ";
+'Print "LB=";Hex$(X.LBUS,2);" ";
+'Print "PC/ST=";Hex$(X.PC,4);"-";Hex$(X.SUBST,4);" ";
+'Print "SX=";X.SIGEXEC;" ";
+'Print "P";X.PININT;"E";X.IFF1;"C";X.IFF2;"(";Right(".."+Str(X.PININTDEC),2);"-";Right("....."+Str(X.INTDEC),5);")"';"/";X.IFF3;"+";X.IFF4;
+Print Hex((X.FULLCODE And &HFF)+EPFX(X.FULLCODE Shr 8),6);" ";Right("            "+MNEM(X.FULLCODE),14);" ";
+Print' SS3:SS3=""
+
+End Sub
+
+
+

@@ -1,0 +1,1794 @@
+NOP_
+LD BC,**_
+LD (BC),A_
+INC BC_
+INC B_
+DEC B_
+LD B,*_
+RLCA_
+EX AF,AF'_
+ADD HL,BC_
+LD A,(BC)_
+DEC BC_
+INC C_
+DEC C_
+LD C,*_
+RRCA_
+DJNZ *_
+LD DE,**_
+LD (DE),A_
+INC DE_
+INC D_
+DEC D_
+LD D,*_
+RLA_
+JR *_
+ADD HL,DE_
+LD A,(DE)_
+DEC DE_
+INC E_
+DEC E_
+LD E,*_
+RRA_
+JR NZ,*_
+LD HL,**_
+LD (**),HL_
+INC HL_
+INC H_
+DEC H_
+LD H,*_
+DAA_
+JR Z,*_
+ADD HL,HL_
+LD HL,(**)_
+DEC HL_
+INC L_
+DEC L_
+LD L,*_
+CPL_
+JR NC,*_
+LD SP,**_
+LD (**),A_
+INC SP_
+INC (HL)_
+DEC (HL)_
+LD (HL),*_
+SCF_
+JR C,*_
+ADD HL,SP_
+LD A,(**)_
+DEC SP_
+INC A_
+DEC A_
+LD A,*_
+CCF_
+LD B,B_
+LD B,C_
+LD B,D_
+LD B,E_
+LD B,H_
+LD B,L_
+LD B,(HL)_
+LD B,A_
+LD C,B_
+LD C,C_
+LD C,D_
+LD C,E_
+LD C,H_
+LD C,L_
+LD C,(HL)_
+LD C,A_
+LD D,B_
+LD D,C_
+LD D,D_
+LD D,E_
+LD D,H_
+LD D,L_
+LD D,(HL)_
+LD D,A_
+LD E,B_
+LD E,C_
+LD E,D_
+LD E,E_
+LD E,H_
+LD E,L_
+LD E,(HL)_
+LD E,A_
+LD H,B_
+LD H,C_
+LD H,D_
+LD H,E_
+LD H,H_
+LD H,L_
+LD H,(HL)_
+LD H,A_
+LD L,B_
+LD L,C_
+LD L,D_
+LD L,E_
+LD L,H_
+LD L,L_
+LD L,(HL)_
+LD L,A_
+LD (HL),B_
+LD (HL),C_
+LD (HL),D_
+LD (HL),E_
+LD (HL),H_
+LD (HL),L_
+HALT_
+LD (HL),A_
+LD A,B_
+LD A,C_
+LD A,D_
+LD A,E_
+LD A,H_
+LD A,L_
+LD A,(HL)_
+LD A,A_
+Add A,B_
+ADD A,C_
+ADD A,D_
+ADD A,E_
+ADD A,H_
+Add A,L_
+ADD A,(HL)_
+Add A,A_
+ADC A,B_
+ADC A,C_
+ADC A,D_
+ADC A,E_
+ADC A,H_
+ADC A,L_
+ADC A,(HL)_
+ADC A,A_
+SUB A,B_
+Sub A,C_
+SUB A,D_
+SUB A,E_
+Sub A,H_
+SUB A,L_
+SUB A,(HL)_
+SUB A,A_
+SBC A,B_
+SBC A,C_
+SBC A,D_
+SBC A,E_
+SBC A,H_
+SBC A,L_
+SBC A,(HL)_
+SBC A,A_
+AND A,B_
+AND A,C_
+And A,D_
+And A,E_
+AND A,H_
+AND A,L_
+AND A,(HL)_
+AND A,A_
+XOR A,B_
+XOR A,C_
+XOR A,D_
+XOR A,E_
+XOR A,H_
+XOR A,L_
+XOR A,(HL)_
+XOR A,A_
+OR A,B_
+OR A,C_
+OR A,D_
+Or A,E_
+Or A,H_
+OR A,L_
+OR A,(HL)_
+OR A,A_
+CP A,B_
+CP A,C_
+CP A,D_
+CP A,E_
+CP A,H_
+CP A,L_
+CP A,(HL)_
+CP A,A_
+RET NZ_
+POP BC_
+JP NZ,**_
+JP **_
+Call NZ,**_
+PUSH BC_
+ADD A,*_
+RST 00H_
+RET Z_
+RET_
+JP Z,**_
+#CB_
+CALL Z,**_
+CALL **_
+ADC A,*_
+RST 08H_
+RET NC_
+POP DE_
+JP NC,**_
+OUT (*),A_
+Call NC,**_
+PUSH DE_
+SUB A,*_
+RST 10H_
+RET C_
+EXX_
+JP C,**_
+IN A,(*)_
+CALL C,**_
+#DD_
+SBC A,*_
+RST 18H_
+RET PO_
+POP HL_
+JP PO,**_
+EX (SP),HL_
+Call PO,**_
+PUSH HL_
+AND A,*_
+RST 20H_
+RET PE_
+JP (HL)_
+JP PE,**_
+EX DE,HL_
+Call PE,**_
+#ED_
+XOR A,*_
+RST 28H_
+RET P_
+POP AF_
+JP P,**_
+DI_
+Call P,**_
+PUSH AF_
+OR A,*_
+RST 30H_
+RET M_
+LD SP,HL_
+JP M,**_
+EI_
+CALL M,**_
+#FD_
+CP *_
+RST 38H_
+NOP_
+LD BC,**_
+LD (BC),A_
+INC BC_
+INC B_
+DEC B_
+LD B,*_
+RLCA_
+EX AF,AF'_
+ADD IX,BC_
+LD A,(BC)_
+DEC BC_
+INC C_
+DEC C_
+LD C,*_
+RRCA_
+DJNZ *_
+LD DE,**_
+LD (DE),A_
+INC DE_
+INC D_
+DEC D_
+LD D,*_
+RLA_
+JR *_
+ADD IX,DE_
+LD A,(DE)_
+DEC DE_
+INC E_
+DEC E_
+LD E,*_
+RRA_
+JR NZ,*_
+LD IX,**_
+LD (**),IX_
+INC IX_
+INC IXH_
+DEC IXH_
+LD IXH,*_
+DAA_
+JR Z,*_
+ADD IX,IX_
+LD IX,(**)_
+DEC IX_
+INC IXL_
+DEC IXL_
+LD IXL,*_
+CPL_
+JR NC,*_
+LD SP,**_
+LD (**),A_
+INC SP_
+INC (IX+*)_
+DEC (IX+*)_
+LD (IX+*),*_
+SCF_
+JR C,*_
+ADD IX,SP_
+LD A,(**)_
+DEC SP_
+INC A_
+DEC A_
+LD A,*_
+CCF_
+LD B,B_
+LD B,C_
+LD B,D_
+LD B,E_
+LD B,IXH_
+LD B,IXL_
+LD B,(IX+*)_
+LD B,A_
+LD C,B_
+LD C,C_
+LD C,D_
+LD C,E_
+LD C,IXH_
+LD C,IXL_
+LD C,(IX+*)_
+LD C,A_
+LD D,B_
+LD D,C_
+LD D,D_
+LD D,E_
+LD D,IXH_
+LD D,IXL_
+LD D,(IX+*)_
+LD D,A_
+LD E,B_
+LD E,C_
+LD E,D_
+LD E,E_
+LD E,IXH_
+LD E,IXL_
+LD E,(IX+*)_
+LD E,A_
+LD IXH,B_
+LD IXH,C_
+LD IXH,D_
+LD IXH,E_
+LD IXH,IXH_
+LD IXH,IXL_
+LD H,(IX+*)_
+LD IXH,A_
+LD IXL,B_
+LD IXL,C_
+LD IXL,D_
+LD IXL,E_
+LD IXL,IXH_
+LD IXL,IXL_
+LD L,(IX+*)_
+LD IXL,A_
+LD (IX+*),B_
+LD (IX+*),C_
+LD (IX+*),D_
+LD (IX+*),E_
+LD (IX+*),H_
+LD (IX+*),L_
+HALT_
+LD (IX+*),A_
+LD A,B_
+LD A,C_
+LD A,D_
+LD A,E_
+LD A,IXH_
+LD A,IXL_
+LD A,(IX+*)_
+LD A,A_
+ADD A,B_
+Add A,C_
+ADD A,D_
+ADD A,E_
+ADD A,IXH_
+ADD A,IXL_
+ADD A,(IX+*)_
+ADD A,A_
+ADC A,B_
+ADC A,C_
+ADC A,D_
+ADC A,E_
+ADC A,IXH_
+ADC A,IXL_
+ADC A,(IX+*)_
+ADC A,A_
+SUB A,B_
+SUB A,C_
+Sub A,D_
+SUB A,E_
+SUB IXH_
+SUB IXL_
+SUB (IX+*)_
+SUB A,A_
+SBC A,B_
+SBC A,C_
+SBC A,D_
+SBC A,E_
+SBC A,IXH_
+SBC A,IXL_
+SBC A,(IX+*)_
+SBC A,A_
+AND A,B_
+AND A,C_
+AND A,D_
+AND A,E_
+And IXH_
+AND IXL_
+AND (IX+*)_
+AND A,A_
+XOR A,B_
+XOR A,C_
+XOR A,D_
+XOR A,E_
+XOR IXH_
+XOR IXL_
+XOR (IX+*)_
+XOR A,A_
+OR A,B_
+OR A,C_
+OR A,D_
+OR A,E_
+OR IXH_
+OR IXL_
+OR (IX+*)_
+Or A,A_
+CP A,B_
+CP A,C_
+CP A,D_
+CP A,E_
+CP IXH_
+CP IXL_
+CP (IX+*)_
+CP A,A_
+RET NZ_
+POP BC_
+JP NZ,**_
+JP **_
+CALL NZ,**_
+PUSH BC_
+ADD A,*_
+RST 00H_
+RET Z_
+RET_
+JP Z,**_
+#DDCB_
+Call Z,**_
+CALL **_
+ADC A,*_
+RST 08H_
+RET NC_
+POP DE_
+JP NC,**_
+OUT (*),A_
+CALL NC,**_
+PUSH DE_
+SUB A,*_
+RST 10H_
+RET C_
+EXX_
+JP C,**_
+IN A,(*)_
+CALL C,**_
+#DD_
+SBC A,*_
+RST 18H_
+RET PO_
+POP IX_
+JP PO,**_
+EX (SP),IX_
+CALL PO,**_
+PUSH IX_
+AND A,*_
+RST 20H_
+RET PE_
+JP (IX)_
+JP PE,**_
+EX DE,HL_
+CALL PE,**_
+#ED_
+XOR A,*_
+RST 28H_
+RET P_
+POP AF_
+JP P,**_
+DI_
+Call P,**_
+PUSH AF_
+OR A,*_
+RST 30H_
+RET M_
+LD SP,IX_
+JP M,**_
+EI_
+CALL M,**_
+#FD_
+CP A,*_
+RST 38H_
+NOP_
+LD BC,**_
+LD (BC),A_
+INC BC_
+INC B_
+DEC B_
+LD B,*_
+RLCA_
+EX AF,AF'_
+ADD IY,BC_
+LD A,(BC)_
+DEC BC_
+INC C_
+DEC C_
+LD C,*_
+RRCA_
+DJNZ *_
+LD DE,**_
+LD (DE),A_
+INC DE_
+INC D_
+DEC D_
+LD D,*_
+RLA_
+JR *_
+ADD IY,DE_
+LD A,(DE)_
+DEC DE_
+INC E_
+DEC E_
+LD E,*_
+RRA_
+JR NZ,*_
+LD IY,**_
+LD (**),IY_
+INC IY_
+INC IYH_
+DEC IYH_
+LD IYH,*_
+DAA_
+JR Z,*_
+ADD IY,IY_
+LD IY,(**)_
+DEC IY_
+INC IYL_
+DEC IYL_
+LD IYL,*_
+CPL_
+JR NC,*_
+LD SP,**_
+LD (**),A_
+INC SP_
+INC (IY+*)_
+DEC (IY+*)_
+LD (IY+*),*_
+SCF_
+JR C,*_
+ADD IY,SP_
+LD A,(**)_
+DEC SP_
+INC A_
+DEC A_
+LD A,*_
+CCF_
+LD B,B_
+LD B,C_
+LD B,D_
+LD B,E_
+LD B,IYH_
+LD B,IYL_
+LD B,(IY+*)_
+LD B,A_
+LD C,B_
+LD C,C_
+LD C,D_
+LD C,E_
+LD C,IYH_
+LD C,IYL_
+LD C,(IY+*)_
+LD C,A_
+LD D,B_
+LD D,C_
+LD D,D_
+LD D,E_
+LD D,IYH_
+LD D,IYL_
+LD D,(IY+*)_
+LD D,A_
+LD E,B_
+LD E,C_
+LD E,D_
+LD E,E_
+LD E,IYH_
+LD E,IYL_
+LD E,(IY+*)_
+LD E,A_
+LD IYH,B_
+LD IYH,C_
+LD IYH,D_
+LD IYH,E_
+LD IYH,IYH_
+LD IYH,IYL_
+LD H,(IY+*)_
+LD IYH,A_
+LD IYL,B_
+LD IYL,C_
+LD IYL,D_
+LD IYL,E_
+LD IYL,IYH_
+LD IYL,IYL_
+LD L,(IY+*)_
+LD IYL,A_
+LD (IY+*),B_
+LD (IY+*),C_
+LD (IY+*),D_
+LD (IY+*),E_
+LD (IY+*),H_
+LD (IY+*),L_
+HALT_
+LD (IY+*),A_
+LD A,B_
+LD A,C_
+LD A,D_
+LD A,E_
+LD A,IYH_
+LD A,IYL_
+LD A,(IY+*)_
+LD A,A_
+ADD A,B_
+Add A,C_
+ADD A,D_
+ADD A,E_
+ADD A,IYH_
+ADD A,IYL_
+ADD A,(IY+*)_
+ADD A,A_
+ADC A,B_
+ADC A,C_
+ADC A,D_
+ADC A,E_
+ADC A,IYH_
+ADC A,IYL_
+ADC A,(IY+*)_
+ADC A,A_
+SUB A,B_
+SUB A,C_
+SUB A,D_
+SUB A,E_
+Sub IYH_
+SUB IYL_
+SUB (IY+*)_
+SUB A,A_
+SBC A,B_
+SBC A,C_
+SBC A,D_
+SBC A,E_
+SBC A,IYH_
+SBC A,IYL_
+SBC A,(IY+*)_
+SBC A,A_
+AND A,B_
+AND A,C_
+AND A,D_
+AND A,E_
+AND IYH_
+AND IYL_
+AND (IY+*)_
+And A,A_
+XOR A,B_
+XOR A,C_
+XOR A,D_
+XOR A,E_
+XOR IYH_
+XOR IYL_
+XOR (IY+*)_
+Xor A,A_
+OR A,B_
+OR A,C_
+OR A,D_
+OR A,E_
+OR IYH_
+OR IYL_
+OR (IY+*)_
+OR A,A_
+CP A,B_
+CP A,C_
+CP A,D_
+CP A,E_
+CP IYH_
+CP IYL_
+CP (IY+*)_
+CP A,A_
+RET NZ_
+POP BC_
+JP NZ,**_
+JP **_
+CALL NZ,**_
+PUSH BC_
+ADD A,*_
+RST 00H_
+RET Z_
+RET_
+JP Z,**_
+#FDCB_
+CALL Z,**_
+CALL **_
+ADC A,*_
+RST 08H_
+RET NC_
+POP DE_
+JP NC,**_
+Out (*),A_
+CALL NC,**_
+PUSH DE_
+SUB A,*_
+RST 10H_
+RET C_
+EXX_
+JP C,**_
+IN A,(*)_
+CALL C,**_
+#DD_
+SBC A,*_
+RST 18H_
+RET PO_
+POP IY_
+JP PO,**_
+EX (SP),IY_
+CALL PO,**_
+PUSH IY_
+AND A,*_
+RST 20H_
+RET PE_
+JP (IY)_
+JP PE,**_
+EX DE,HL_
+CALL PE,**_
+#ED_
+XOR A,*_
+RST 28H_
+RET P_
+POP AF_
+JP P,**_
+DI_
+CALL P,**_
+PUSH AF_
+OR A,*_
+RST 30H_
+RET M_
+LD SP,IY_
+JP M,**_
+EI_
+CALL M,**_
+#FD_
+CP A,*_
+RST 38H_
+RLC B_
+RLC C_
+RLC D_
+RLC E_
+RLC H_
+RLC L_
+RLC (HL)_
+RLC A_
+RRC B_
+RRC C_
+RRC D_
+RRC E_
+RRC H_
+RRC L_
+RRC (HL)_
+RRC A_
+RL B_
+RL C_
+RL D_
+RL E_
+RL H_
+RL L_
+RL (HL)_
+RL A_
+RR B_
+RR C_
+RR D_
+RR E_
+RR H_
+RR L_
+RR (HL)_
+RR A_
+SLA B_
+SLA C_
+SLA D_
+SLA E_
+SLA H_
+SLA L_
+SLA (HL)_
+SLA A_
+SRA B_
+SRA C_
+SRA D_
+SRA E_
+SRA H_
+SRA L_
+SRA (HL)_
+SRA A_
+SLL B_
+SLL C_
+SLL D_
+SLL E_
+SLL H_
+SLL L_
+SLL (HL)_
+SLL A_
+SRL B_
+SRL C_
+SRL D_
+SRL E_
+SRL H_
+SRL L_
+SRL (HL)_
+SRL A_
+BIT 0,B_
+BIT 0,C_
+BIT 0,D_
+BIT 0,E_
+BIT 0,H_
+BIT 0,L_
+BIT 0,(HL)_
+BIT 0,A_
+BIT 1,B_
+BIT 1,C_
+BIT 1,D_
+BIT 1,E_
+Bit 1,H_
+BIT 1,L_
+BIT 1,(HL)_
+BIT 1,A_
+BIT 2,B_
+BIT 2,C_
+BIT 2,D_
+BIT 2,E_
+BIT 2,H_
+BIT 2,L_
+BIT 2,(HL)_
+BIT 2,A_
+BIT 3,B_
+BIT 3,C_
+BIT 3,D_
+BIT 3,E_
+BIT 3,H_
+BIT 3,L_
+BIT 3,(HL)_
+BIT 3,A_
+Bit 4,B_
+BIT 4,C_
+BIT 4,D_
+BIT 4,E_
+BIT 4,H_
+BIT 4,L_
+BIT 4,(HL)_
+BIT 4,A_
+BIT 5,B_
+BIT 5,C_
+BIT 5,D_
+BIT 5,E_
+BIT 5,H_
+BIT 5,L_
+BIT 5,(HL)_
+BIT 5,A_
+BIT 6,B_
+BIT 6,C_
+BIT 6,D_
+BIT 6,E_
+Bit 6,H_
+BIT 6,L_
+BIT 6,(HL)_
+BIT 6,A_
+BIT 7,B_
+BIT 7,C_
+BIT 7,D_
+BIT 7,E_
+BIT 7,H_
+BIT 7,L_
+BIT 7,(HL)_
+BIT 7,A_
+RES 0,B_
+RES 0,C_
+RES 0,D_
+RES 0,E_
+RES 0,H_
+RES 0,L_
+RES 0,(HL)_
+RES 0,A_
+RES 1,B_
+RES 1,C_
+RES 1,D_
+RES 1,E_
+RES 1,H_
+RES 1,L_
+RES 1,(HL)_
+RES 1,A_
+RES 2,B_
+RES 2,C_
+RES 2,D_
+RES 2,E_
+RES 2,H_
+RES 2,L_
+RES 2,(HL)_
+RES 2,A_
+RES 3,B_
+RES 3,C_
+RES 3,D_
+RES 3,E_
+RES 3,H_
+RES 3,L_
+RES 3,(HL)_
+RES 3,A_
+RES 4,B_
+RES 4,C_
+RES 4,D_
+RES 4,E_
+RES 4,H_
+RES 4,L_
+RES 4,(HL)_
+RES 4,A_
+RES 5,B_
+RES 5,C_
+RES 5,D_
+RES 5,E_
+RES 5,H_
+RES 5,L_
+RES 5,(HL)_
+RES 5,A_
+RES 6,B_
+RES 6,C_
+RES 6,D_
+RES 6,E_
+RES 6,H_
+RES 6,L_
+RES 6,(HL)_
+RES 6,A_
+RES 7,B_
+RES 7,C_
+RES 7,D_
+RES 7,E_
+RES 7,H_
+RES 7,L_
+RES 7,(HL)_
+RES 7,A_
+SET 0,B_
+SET 0,C_
+SET 0,D_
+SET 0,E_
+SET 0,H_
+SET 0,L_
+SET 0,(HL)_
+SET 0,A_
+SET 1,B_
+SET 1,C_
+SET 1,D_
+SET 1,E_
+SET 1,H_
+SET 1,L_
+SET 1,(HL)_
+SET 1,A_
+SET 2,B_
+SET 2,C_
+SET 2,D_
+SET 2,E_
+SET 2,H_
+SET 2,L_
+SET 2,(HL)_
+SET 2,A_
+SET 3,B_
+SET 3,C_
+SET 3,D_
+SET 3,E_
+SET 3,H_
+SET 3,L_
+SET 3,(HL)_
+SET 3,A_
+SET 4,B_
+SET 4,C_
+SET 4,D_
+SET 4,E_
+SET 4,H_
+SET 4,L_
+SET 4,(HL)_
+SET 4,A_
+SET 5,B_
+SET 5,C_
+SET 5,D_
+SET 5,E_
+SET 5,H_
+SET 5,L_
+SET 5,(HL)_
+SET 5,A_
+SET 6,B_
+SET 6,C_
+SET 6,D_
+SET 6,E_
+SET 6,H_
+SET 6,L_
+SET 6,(HL)_
+SET 6,A_
+SET 7,B_
+SET 7,C_
+SET 7,D_
+SET 7,E_
+SET 7,H_
+SET 7,L_
+SET 7,(HL)_
+SET 7,A_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+IN B,(C)_
+OUT (C),B_
+SBC HL,BC_
+LD (**),BC_
+NEG_
+RETN_
+IM 0_
+LD I,A_
+IN C,(C)_
+OUT (C),C_
+ADC HL,BC_
+LD BC,(**)_
+NEG_
+RETI_
+IM 0_
+LD R,A_
+IN D,(C)_
+OUT (C),D_
+SBC HL,DE_
+LD (**),DE_
+NEG_
+RETN_
+IM 1_
+LD A,I_
+IN E,(C)_
+OUT (C),E_
+ADC HL,DE_
+LD DE,(**)_
+NEG_
+RETN_
+IM 2_
+LD A,R_
+IN H,(C)_
+OUT (C),H_
+SBC HL,HL_
+LD (**),HL_
+NEG_
+RETN_
+IM 0_
+RRD_
+IN L,(C)_
+OUT (C),L_
+ADC HL,HL_
+LD HL,(**)_
+NEG_
+RETN_
+IM 0_
+RLD_
+IN NULL,(C)_
+OUT (C),00H_
+SBC HL,SP_
+LD (**),SP_
+NEG_
+RETN_
+IM 1_
+UNOP_
+IN A,(C)_
+OUT (C),A_
+ADC HL,SP_
+LD SP,(**)_
+NEG_
+RETN_
+IM 2_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+LDI_
+CPI_
+INI_
+OUTI_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+LDD_
+CPD_
+IND_
+OUTD_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+LDIR_
+CPIR_
+INIR_
+OTIR_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+LDDR_
+CPDR_
+INDR_
+OTDR_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+UNOP_
+RLC (IX+*),B_
+RLC (IX+*),C_
+RLC (IX+*),D_
+RLC (IX+*),E_
+RLC (IX+*),H_
+RLC (IX+*),L_
+RLC (IX+*)_
+RLC (IX+*),A_
+RRC (IX+*),B_
+RRC (IX+*),C_
+RRC (IX+*),D_
+RRC (IX+*),E_
+RRC (IX+*),H_
+RRC (IX+*),L_
+RRC (IX+*)_
+RRC (IX+*),A_
+RL (IX+*),B_
+RL (IX+*),C_
+RL (IX+*),D_
+RL (IX+*),E_
+RL (IX+*),H_
+RL (IX+*),L_
+RL (IX+*)_
+RL (IX+*),A_
+RR (IX+*),B_
+RR (IX+*),C_
+RR (IX+*),D_
+RR (IX+*),E_
+RR (IX+*),H_
+RR (IX+*),L_
+RR (IX+*)_
+RR (IX+*),A_
+SLA (IX+*),B_
+SLA (IX+*),C_
+SLA (IX+*),D_
+SLA (IX+*),E_
+SLA (IX+*),H_
+SLA (IX+*),L_
+SLA (IX+*)_
+SLA (IX+*),A_
+SRA (IX+*),B_
+SRA (IX+*),C_
+SRA (IX+*),D_
+SRA (IX+*),E_
+SRA (IX+*),H_
+SRA (IX+*),L_
+SRA (IX+*)_
+SRA (IX+*),A_
+SLL (IX+*),B_
+SLL (IX+*),C_
+SLL (IX+*),D_
+SLL (IX+*),E_
+SLL (IX+*),H_
+SLL (IX+*),L_
+SLL (IX+*)_
+SLL (IX+*),A_
+SRL (IX+*),B_
+SRL (IX+*),C_
+SRL (IX+*),D_
+SRL (IX+*),E_
+SRL (IX+*),H_
+SRL (IX+*),L_
+SRL (IX+*)_
+SRL (IX+*),A_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 0,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 1,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 2,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 3,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 4,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 5,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+BIT 6,(IX+*)_
+Bit 6,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+BIT 7,(IX+*)_
+RES 0,(IX+*),B_
+RES 0,(IX+*),C_
+RES 0,(IX+*),D_
+RES 0,(IX+*),E_
+RES 0,(IX+*),H_
+RES 0,(IX+*),L_
+RES 0,(IX+*)_
+RES 0,(IX+*),A_
+RES 1,(IX+*),B_
+RES 1,(IX+*),C_
+RES 1,(IX+*),D_
+RES 1,(IX+*),E_
+RES 1,(IX+*),H_
+RES 1,(IX+*),L_
+RES 1,(IX+*)_
+RES 1,(IX+*),A_
+RES 2,(IX+*),B_
+RES 2,(IX+*),C_
+RES 2,(IX+*),D_
+RES 2,(IX+*),E_
+RES 2,(IX+*),H_
+RES 2,(IX+*),L_
+RES 2,(IX+*)_
+RES 2,(IX+*),A_
+RES 3,(IX+*),B_
+RES 3,(IX+*),C_
+RES 3,(IX+*),D_
+RES 3,(IX+*),E_
+RES 3,(IX+*),H_
+RES 3,(IX+*),L_
+RES 3,(IX+*)_
+RES 3,(IX+*),A_
+RES 4,(IX+*),B_
+RES 4,(IX+*),C_
+RES 4,(IX+*),D_
+RES 4,(IX+*),E_
+RES 4,(IX+*),H_
+RES 4,(IX+*),L_
+RES 4,(IX+*)_
+RES 4,(IX+*),A_
+RES 5,(IX+*),B_
+RES 5,(IX+*),C_
+RES 5,(IX+*),D_
+RES 5,(IX+*),E_
+RES 5,(IX+*),H_
+RES 5,(IX+*),L_
+RES 5,(IX+*)_
+RES 5,(IX+*),A_
+RES 6,(IX+*),B_
+RES 6,(IX+*),C_
+RES 6,(IX+*),D_
+RES 6,(IX+*),E_
+RES 6,(IX+*),H_
+RES 6,(IX+*),L_
+RES 6,(IX+*)_
+RES 6,(IX+*),A_
+RES 7,(IX+*),B_
+RES 7,(IX+*),C_
+RES 7,(IX+*),D_
+RES 7,(IX+*),E_
+RES 7,(IX+*),H_
+RES 7,(IX+*),L_
+RES 7,(IX+*)_
+RES 7,(IX+*),A_
+SET 0,(IX+*),B_
+SET 0,(IX+*),C_
+SET 0,(IX+*),D_
+SET 0,(IX+*),E_
+SET 0,(IX+*),H_
+SET 0,(IX+*),L_
+SET 0,(IX+*)_
+SET 0,(IX+*),A_
+SET 1,(IX+*),B_
+SET 1,(IX+*),C_
+SET 1,(IX+*),D_
+SET 1,(IX+*),E_
+SET 1,(IX+*),H_
+SET 1,(IX+*),L_
+SET 1,(IX+*)_
+SET 1,(IX+*),A_
+SET 2,(IX+*),B_
+SET 2,(IX+*),C_
+SET 2,(IX+*),D_
+SET 2,(IX+*),E_
+SET 2,(IX+*),H_
+SET 2,(IX+*),L_
+SET 2,(IX+*)_
+SET 2,(IX+*),A_
+SET 3,(IX+*),B_
+SET 3,(IX+*),C_
+SET 3,(IX+*),D_
+SET 3,(IX+*),E_
+SET 3,(IX+*),H_
+SET 3,(IX+*),L_
+SET 3,(IX+*)_
+SET 3,(IX+*),A_
+SET 4,(IX+*),B_
+SET 4,(IX+*),C_
+SET 4,(IX+*),D_
+SET 4,(IX+*),E_
+SET 4,(IX+*),H_
+SET 4,(IX+*),L_
+SET 4,(IX+*)_
+SET 4,(IX+*),A_
+SET 5,(IX+*),B_
+SET 5,(IX+*),C_
+SET 5,(IX+*),D_
+SET 5,(IX+*),E_
+SET 5,(IX+*),H_
+SET 5,(IX+*),L_
+SET 5,(IX+*)_
+SET 5,(IX+*),A_
+SET 6,(IX+*),B_
+SET 6,(IX+*),C_
+SET 6,(IX+*),D_
+SET 6,(IX+*),E_
+SET 6,(IX+*),H_
+SET 6,(IX+*),L_
+SET 6,(IX+*)_
+SET 6,(IX+*),A_
+SET 7,(IX+*),B_
+SET 7,(IX+*),C_
+SET 7,(IX+*),D_
+SET 7,(IX+*),E_
+SET 7,(IX+*),H_
+SET 7,(IX+*),L_
+SET 7,(IX+*)_
+SET 7,(IX+*),A_
+RLC (IY+*),B_
+RLC (IY+*),C_
+RLC (IY+*),D_
+RLC (IY+*),E_
+RLC (IY+*),H_
+RLC (IY+*),L_
+RLC (IY+*)_
+RLC (IY+*),A_
+RRC (IY+*),B_
+RRC (IY+*),C_
+RRC (IY+*),D_
+RRC (IY+*),E_
+RRC (IY+*),H_
+RRC (IY+*),L_
+RRC (IY+*)_
+RRC (IY+*),A_
+RL (IY+*),B_
+RL (IY+*),C_
+RL (IY+*),D_
+RL (IY+*),E_
+RL (IY+*),H_
+RL (IY+*),L_
+RL (IY+*)_
+RL (IY+*),A_
+RR (IY+*),B_
+RR (IY+*),C_
+RR (IY+*),D_
+RR (IY+*),E_
+RR (IY+*),H_
+RR (IY+*),L_
+RR (IY+*)_
+RR (IY+*),A_
+SLA (IY+*),B_
+SLA (IY+*),C_
+SLA (IY+*),D_
+SLA (IY+*),E_
+SLA (IY+*),H_
+SLA (IY+*),L_
+SLA (IY+*)_
+SLA (IY+*),A_
+SRA (IY+*),B_
+SRA (IY+*),C_
+SRA (IY+*),D_
+SRA (IY+*),E_
+SRA (IY+*),H_
+SRA (IY+*),L_
+SRA (IY+*)_
+SRA (IY+*),A_
+SLL (IY+*),B_
+SLL (IY+*),C_
+SLL (IY+*),D_
+SLL (IY+*),E_
+SLL (IY+*),H_
+SLL (IY+*),L_
+SLL (IY+*)_
+SLL (IY+*),A_
+SRL (IY+*),B_
+SRL (IY+*),C_
+SRL (IY+*),D_
+SRL (IY+*),E_
+SRL (IY+*),H_
+SRL (IY+*),L_
+SRL (IY+*)_
+SRL (IY+*),A_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 0,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 1,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 2,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 3,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 4,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 5,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 6,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+BIT 7,(IY+*)_
+RES 0,(IY+*),B_
+RES 0,(IY+*),C_
+RES 0,(IY+*),D_
+RES 0,(IY+*),E_
+RES 0,(IY+*),H_
+RES 0,(IY+*),L_
+RES 0,(IY+*)_
+RES 0,(IY+*),A_
+RES 1,(IY+*),B_
+RES 1,(IY+*),C_
+RES 1,(IY+*),D_
+RES 1,(IY+*),E_
+RES 1,(IY+*),H_
+RES 1,(IY+*),L_
+RES 1,(IY+*)_
+RES 1,(IY+*),A_
+RES 2,(IY+*),B_
+RES 2,(IY+*),C_
+RES 2,(IY+*),D_
+RES 2,(IY+*),E_
+RES 2,(IY+*),H_
+RES 2,(IY+*),L_
+RES 2,(IY+*)_
+RES 2,(IY+*),A_
+RES 3,(IY+*),B_
+RES 3,(IY+*),C_
+RES 3,(IY+*),D_
+RES 3,(IY+*),E_
+RES 3,(IY+*),H_
+RES 3,(IY+*),L_
+RES 3,(IY+*)_
+RES 3,(IY+*),A_
+RES 4,(IY+*),B_
+RES 4,(IY+*),C_
+RES 4,(IY+*),D_
+RES 4,(IY+*),E_
+RES 4,(IY+*),H_
+RES 4,(IY+*),L_
+RES 4,(IY+*)_
+RES 4,(IY+*),A_
+RES 5,(IY+*),B_
+RES 5,(IY+*),C_
+RES 5,(IY+*),D_
+RES 5,(IY+*),E_
+RES 5,(IY+*),H_
+RES 5,(IY+*),L_
+RES 5,(IY+*)_
+RES 5,(IY+*),A_
+RES 6,(IY+*),B_
+RES 6,(IY+*),C_
+RES 6,(IY+*),D_
+RES 6,(IY+*),E_
+RES 6,(IY+*),H_
+RES 6,(IY+*),L_
+RES 6,(IY+*)_
+RES 6,(IY+*),A_
+RES 7,(IY+*),B_
+RES 7,(IY+*),C_
+RES 7,(IY+*),D_
+RES 7,(IY+*),E_
+RES 7,(IY+*),H_
+RES 7,(IY+*),L_
+RES 7,(IY+*)_
+RES 7,(IY+*),A_
+SET 0,(IY+*),B_
+SET 0,(IY+*),C_
+SET 0,(IY+*),D_
+SET 0,(IY+*),E_
+SET 0,(IY+*),H_
+SET 0,(IY+*),L_
+SET 0,(IY+*)_
+SET 0,(IY+*),A_
+SET 1,(IY+*),B_
+SET 1,(IY+*),C_
+SET 1,(IY+*),D_
+SET 1,(IY+*),E_
+SET 1,(IY+*),H_
+SET 1,(IY+*),L_
+SET 1,(IY+*)_
+SET 1,(IY+*),A_
+SET 2,(IY+*),B_
+SET 2,(IY+*),C_
+SET 2,(IY+*),D_
+SET 2,(IY+*),E_
+SET 2,(IY+*),H_
+SET 2,(IY+*),L_
+SET 2,(IY+*)_
+SET 2,(IY+*),A_
+SET 3,(IY+*),B_
+SET 3,(IY+*),C_
+SET 3,(IY+*),D_
+SET 3,(IY+*),E_
+SET 3,(IY+*),H_
+SET 3,(IY+*),L_
+SET 3,(IY+*)_
+SET 3,(IY+*),A_
+SET 4,(IY+*),B_
+SET 4,(IY+*),C_
+SET 4,(IY+*),D_
+SET 4,(IY+*),E_
+SET 4,(IY+*),H_
+SET 4,(IY+*),L_
+SET 4,(IY+*)_
+SET 4,(IY+*),A_
+SET 5,(IY+*),B_
+SET 5,(IY+*),C_
+SET 5,(IY+*),D_
+SET 5,(IY+*),E_
+SET 5,(IY+*),H_
+SET 5,(IY+*),L_
+SET 5,(IY+*)_
+SET 5,(IY+*),A_
+SET 6,(IY+*),B_
+SET 6,(IY+*),C_
+SET 6,(IY+*),D_
+SET 6,(IY+*),E_
+SET 6,(IY+*),H_
+SET 6,(IY+*),L_
+SET 6,(IY+*)_
+SET 6,(IY+*),A_
+SET 7,(IY+*),B_
+SET 7,(IY+*),C_
+SET 7,(IY+*),D_
+SET 7,(IY+*),E_
+SET 7,(IY+*),H_
+SET 7,(IY+*),L_
+SET 7,(IY+*)_
+SET 7,(IY+*),A_
+[NOP HEADER]_
+!
