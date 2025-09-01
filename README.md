@@ -1,9 +1,10 @@
 # Z80-MICROCODE-EMULATOR
 + Its sole purpose to play with microcode. Is designed barely on Visual Z80 Remix, using its tracelogs.
-+ Undocumented behavior was clarified using other sources.
-+ This microcode model have assumptions regarding z80 operation, as close to Z80 as possible.
-+ All pipelining exact to tracelogs. Pairing uops and entailing parallel uops are easy using PAR: TRI: and EXT: modifiers
++ All undocumented behavior resolved, excluding "special reset", HBUS simulated only for CCF/SCF without noise.
++ UOPs reflect Z80 behavior according to all unique half t-states found in actual execution
++ Pipelining present, previous UOPs first. Merging UOPs and entailing parallel UOPs are easy using PAR: TRI: EXT: DONE: and XEND: modifiers
 + With any enchancements to Z80 in mind, the microcode may be well rewritten and tested, especially its speed gain.
++ Extra prefixed opcode pages may be created and used for speed tests on actual Z80 software
 ### Version 0.46
 + UOPs execution reverted to FreeBasic
 + Pin signaling present, WAIT, BUSRQ, correct INT, etc, almost done
