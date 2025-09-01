@@ -3,7 +3,6 @@
 + All undocumented behavior resolved, excluding "special reset", HBUS simulated only for CCF/SCF without noise.
 + UOPs reflect Z80 behavior according to all unique half t-states found in actual execution
 + Pipelining present, previous UOPs first. Merging UOPs and entailing parallel UOPs are easy using PAR: TRI: EXT: DONE: and XEND: modifiers
-+ With any enchancements to Z80 in mind, the microcode may be well rewritten and tested, especially its speed gain.
 + Extra prefixed opcode pages may be created and used for speed tests on actual Z80 software
 ### Version 0.46
 + UOPs execution reverted to FreeBasic
