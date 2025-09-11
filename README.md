@@ -5,6 +5,11 @@
 + Extra prefixed opcode pages may be created and used for speed tests on actual ZXS48K software
 + IORQ devices, DRAM, some sound, some internal GUI planned.
 + ULA 6912 displayed with FX filter v2.2, patterns and luma controls active
+### Version 0.47.9
++ Old T-State UOPS and its compatibles all removed
++ UODAA,UOADD,UOADC now in ASM without LUT
++ WAIT,BUSRQ,BUSAK discard table-driven states
++ Found ELITE hang in long run, under repair
 ### Version 0.47
 + Half T-state action 
 + UOPs sequences populated anew
