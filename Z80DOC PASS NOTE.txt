@@ -1,5 +1,0 @@
-Z80DOC by Patrik Rak note:
-
-In order to pass in/ini groups, 
-all ports in range 00fe to fffe 
-must respond with BFh number, CRC were built on that
