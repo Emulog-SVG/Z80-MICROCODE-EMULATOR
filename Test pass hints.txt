@@ -1,0 +1,30 @@
+
+In order to pass Q:
+
+ ALU never use F53, F<>FLG loads done via HBUS(VBUS) latch
+ Bits 53 are leftout from data passage
+ Every legal aluop has defined state action, so set DSA flag with that
+ Each new M1 cycle copy and reset DSA to ASA flag
+ Each CCF and SCF check - if ASA then COPY F53 else OR F53
+ CCF and SCF set DSA like normal aluop.
+
+In order to pass LDXX and CPXX, interrupted quirk
+
+ Both single and repeated versions 
+ have ending overlapped aluop like inside LD R,R
+ First nibble of ALUA and ALUB added and 
+ written twice to low and high nibble of HBUS so F53=F13
+ ALUA is A that loaded ad ADDER=IR stage
+ ALUB is DLATCH value via LBUS
+
+In order to pass INXX and OUTX/OTXX  :
+
+ All IO in range 00FE to FFFE must be &HBF
+ Affection is 3-stage, and PV behavior like this :
+ First is DEC B, second is erratic ADD, last affect PV
+ INIR use Z of WZ, and OTIR use L of HL to load ALU with
+ INIR read port to DLATCH, 
+ OTIR write to port value of (HL) via DLATCH
+ First is ALUA(Z or L)+ALUB(DLATCH)>HBUS set NCH
+ Next is HBUS>ALUA corruption that truncate it like AND &B00000111
+ Last is ALUA XOR ALUB(B) and PV is this
