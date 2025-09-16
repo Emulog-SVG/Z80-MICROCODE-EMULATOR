@@ -6,10 +6,11 @@
 + Extra opcode pages may be created
 + ULA6912 > RGB conversion v2.2 with patterns
 + Signaling ready, UVBUS, PCR2 present
-+ Undocumented behavior resolved
-+ Special Reset, erratic ULWERR inside LD A,(BC) not done
++ Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
+### Version 0.49
++ Naming pattern redo
 ### Version 0.48
 + UOPs execution reverted to FreeBasic
 + UOPs sequences re-populated anew
