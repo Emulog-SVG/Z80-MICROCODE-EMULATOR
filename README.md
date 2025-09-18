@@ -9,8 +9,8 @@
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
-### Version 0.49
-+ Naming pattern redo
+### Version 0.49.6
++ Naming pattern redo, refix some UOPs
 ### Version 0.48
 + UOPs execution reverted to FreeBasic
 + UOPs sequences re-populated anew
