@@ -9,11 +9,11 @@
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
-### Version 0.49.6
-+ Naming pattern redo, refix some UOPs
+### Version 0.5
++ Naming pattern redo, some fixes
 ### Version 0.48
++ UOPs sequences re-populated anew 
 + UOPs execution reverted to FreeBasic
-+ UOPs sequences re-populated anew
 + UODAA,UOADD,UOADC back in ASM, no LUT
 + WAIT,BUSRQ,BUSAK discard table-driven states
 ### Version 0.31
