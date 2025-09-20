@@ -9,8 +9,11 @@
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
+### Version 0.503
++ Final renaming, renumber, clean-up, 322 UOPs
 ### Version 0.5
 + Naming pattern redo, some fixes
++ XLSX UOP summary
 ### Version 0.48
 + UOPs sequences re-populated anew 
 + UOPs execution reverted to FreeBasic
