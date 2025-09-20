@@ -11,6 +11,7 @@
 + Basic sequencer for tests
 ### Version 0.503
 + Final renaming, renumber, clean-up, 322 UOPs
++ Reach 36-39 MHz effective speed on 12400H
 ### Version 0.5
 + Naming pattern redo, some fixes
 + XLSX UOP summary
