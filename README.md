@@ -9,6 +9,8 @@
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
+### Version 0.507
++ RGB conversion v2.3 ASM rewrite partial
 ### Version 0.503
 + Final renaming, renumber, clean-up, 322 UOPs
 + Reach 36-39 MHz effective speed on 12400H
