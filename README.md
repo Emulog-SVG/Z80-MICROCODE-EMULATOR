@@ -10,7 +10,7 @@
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
 ### Version 0.507
-+ RGB conversion v2.3 ASM rewrite partial
++ RGB filter v2.3 ASM gradual rewrite, x3 speed-up
 ### Version 0.503
 + Final renaming, renumber, clean-up, 322 UOPs
 + Reach 36-39 MHz effective speed on 12400H
