@@ -9,6 +9,8 @@
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
+### Version 0.509
++ 5x5 luma matrix rewrite
 ### Version 0.507
 + RGB filter v2.3 ASM gradual rewrite, x3 speed-up
 ### Version 0.503
