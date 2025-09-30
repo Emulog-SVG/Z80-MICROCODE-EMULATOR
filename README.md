@@ -4,13 +4,13 @@
 + Overlapped execution, previous UOPs first
 + Flow control PAR,TRI,EXT,DONE,XEND
 + Extra opcode pages may be created
-+ ULA6912 > RGB conversion v2.3 with patterns
++ ULA6912 > RGB conversion v3.0 with patterns
 + Signaling ready, UVBUS, PCR2 present
 + Undocumented behavior resolved, except special reset
 + Basic file import, state save, load, flush
 + Basic sequencer for tests
-### Version 0.511f
-+ Rewrite RGB conversion v2.3 +30% gain over FB -O3
+### Version 0.512f
++ RGB output overhaul v3.0 +187% gain
 ### Version 0.503
 + Final renaming, renumber, clean-up, 322 UOPs
 + Reach 36-39 MHz effective speed on 12400H
