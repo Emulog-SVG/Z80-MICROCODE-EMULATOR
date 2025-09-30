@@ -12,10 +12,8 @@
 ### Version 0.512f
 + RGB output overhaul v3.0 +187% gain
 ### Version 0.503
-+ Final renaming, renumber, clean-up, 322 UOPs
++ Final UOP renaming, renumber, clean-up, 322 UOPs
 + Reach 36-39 MHz effective speed on 12400H
-### Version 0.5
-+ Naming pattern redo, some fixes
 + XLSX UOP summary
 ### Version 0.48
 + UOPs sequences re-populated anew 
