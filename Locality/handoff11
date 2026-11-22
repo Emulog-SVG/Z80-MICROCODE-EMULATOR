@@ -13,22 +13,7 @@ spec_metadata:
   last_updated: "2026-11-22"
 
 meta_spec:
-  auto_load_corpora:
-    rule: >
-      On session start or handover ingestion, automatically load/fetch ALL reference
-      assembly corpus paths/URLs listed in handover.reference_corpora (N-agnostic:
-      dynamically iterate over every entry present, whether 1, 4, or N paths) BEFORE
-      performing any ROI audits, eviction checks, or opcode analyses.
-    path_integrity_verification:
-      enforcement: NON_NEGOTIABLE
-      rule: >
-        Before concluding handover ingestion or exporting any handover YAML artifact,
-        audit every entry in reference_corpora to verify that its URL/path is parsed
-        fully (including scheme, host, owner, repo, branch/ref, directory, and filename
-        extension). Truncated root domains, stripped subpaths, or placeholder URLs are
-        strictly forbidden. Halt and flag any incomplete or unparsed path immediately
-        before proceeding to opcode analysis or handover serialization.
-
+ 
   research_behavior_and_targets:
     primary_engineering_targets:
       - byte_and_bus_cycle_density: >
