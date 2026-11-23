@@ -34,7 +34,7 @@ META_SPEC:
 # PART 2: MUTABLE HANDOFF PAYLOAD (EVOLVING Z80 & COMPUTER CONTEXT)
 # ==============================================================================
 HANDOFF_PAYLOAD:
-  schema_id: "Z80-ISA1-SYSTEM/2.0"
+  schema_id: "Z80-ISA1-SYSTEM/2.1"
   payload_manifest:
     expected_sections:
       - "isa_profile"
@@ -49,12 +49,12 @@ HANDOFF_PAYLOAD:
     active_variant: "Z80 ISA-1 (Custom NMOS Hybrid R800-Pipelined Core) + Vanilla Z80A Slave"
     isa1_microarchitecture:
       pipeline: "3-stage R800-style pipeline with 16-bit prefetch buffer"
-      external_word_sram: "4x 2114L-2 (200 ns, 1T / 2 half-T @ 3.5469 MHz) or 2114H-1 (120 ns, 0.5T) 512x16 word SRAM on private SD[15:0] bus"
+      external_word_sram: "4x 2114L-2 (200 ns, 1T / 2 half-T) or 2114H-1 (120 ns, 0.5T) 512x16 on SD[15:0]"
       stack_fifo: "SELECT_SPx multi-stack pointers stored in external SD[15:0] SRAM (1T PUSH/POP/CALL/RET)"
-      register_allocation: "BC, DE, HL, IX, IY evicted to external SD[15:0] SRAM; EXX0-EXX3 4-bank register file"
+      register_allocation: "BC, DE, HL, IX, IY evicted to external SD[15:0] SRAM; EXX0-EXX3 4-bank file"
       loop_accelerator: "Hardware-latched REP block loops (0 external opcode fetches)"
-      pad_ring_latching: "Distributed Phi1/Phi2 6T pass-gate latches at D[7:0] pad ring (~95-110 ns min half-T, ~4.55-5.25 MHz max)"
-      bus_interface: "0.5T-phased 8+8 byte-sequencer on unified AD[7:0] bus (16-bit word in 1T) + MODE_MUX Fast Page DRAM"
+      pad_ring_latching: "Distributed Phi1/Phi2 6T latches at D[7:0] pad ring (~95-110 ns half-T, ~4.55-5.25 MHz)"
+      bus_interface: "0.5T-phased 8+8 byte-sequencer on AD[7:0] (16-bit word in 1T) + MODE_MUX Fast Page"
     extensions_enabled:
       - "undocumented_8bit_idx: [IXH, IXL, IYH, IYL]"
       - "undocumented_ops: [SLL]"
@@ -67,37 +67,43 @@ HANDOFF_PAYLOAD:
       timing_model: "1T (281.94 ns @ 3.5469 MHz) 8+8 Fast Page / external SD[15:0] SRAM; 2T row misses"
 
   hardware_environment:
-    target_system: "Custom 1982-1985 PAL50 ZX-Class Unified Computer (ISA-1 / Dual-Z80, Wide Wedge Case)"
+    target_system: "Custom 1982-1985 PAL50 ZX-Class Unified Computer (ISA-1 / Dual-Z80, Wide Wedge)"
     clocks:
       master_crystal_mhz: 14.18758
       vdp_pixel_dot_mhz: 7.09379
       system_cpu_mhz: 3.546895
       pal_chroma_subcarrier_mhz: 4.433619
-      scanline_budget: "227.0T per 64.00 us PAL scanline (454 px @ 7.0938 MHz); 160T active (320px) / 128T (256px) + 24.5T border + 42.5T H-blank"
-      refresh_strategy: "9T (2.54 us) HSYNC-tail burst (or 8T binary counter) inside 42.5T H-blank; sweeps 256 rows in 1.82 ms (28.44 lines) / 2.048 ms (32 lines) for 2 ms leaky DRAMs while keeping 227T scanline invariant"
+      scanline_budget: "227.0T per 64.00 us PAL line (454 px @ 7.0938 MHz); 160T active (320px) + 24.5T border"
+      refresh_strategy: "9T (2.54 us) HSYNC-tail burst (or 8T binary counter) in 42.5T H-blank; 227T invariant"
     bus_crossbar:
-      topology: "0.5T-phased 8+8 byte-sequencer on AD[7:0] (Phi1 0-141 ns Low byte + /WE_L; Phi2 141-282 ns High byte + /WE_H; 26 ns /CAS precharge at 115-141 ns)"
-      inferior_byte_mode: "BYTE_MODE=1 gates /CAS_L,/WE_L via /A0 and /CAS_H,/WE_H via A0 (4 gates) for zero-RMW vanilla Z80A 8-bit access"
-      arbitration: "Low-loss Odd-Even 2T-slotted ULA/CPU crossbar; ULA active fetch drops to 20T/line (8.8%) via V-blank 6116 SRAM auto-DMA"
+      topology: "0.5T-phased 8+8 byte-sequencer on AD[7:0]: Phi1 (0-141 ns) Low + /WE_L; Phi2 (141-282 ns) High"
+      cas_precharge: "26 ns /CAS high precharge (t_CP) at 115-141 ns; /CAS_2 fires at 141.0 ns Phi2 edge"
+      inferior_byte_mode: "BYTE_MODE=1 gates /CAS_L,/WE_L via /A0 and /CAS_H,/WE_H via A0 (4 gates) for zero-RMW"
+      arbitration: "Odd-Even 2T ULA/CPU crossbar; ULA active fetch drops to 20T/line (8.8%) via V-blank DMA"
       effective_mhz:
         isa1_master: "~3.45 - 3.50 MHz (97%-98.5% efficiency @ 3.5469 MHz)"
-        vanilla_z80_slave: "~2.15 - 2.65 MHz concurrent mixed code; ~3.05 - 3.35 MHz when Master runs in SD[15:0] SRAM/HALT; 2.84 - 3.55 MHz (80%-100% phase-locked) on infinite NOPs"
+        vanilla_z80_slave: "~2.15 - 2.65 MHz concurrent; ~3.05 - 3.35 MHz in SRAM/HALT; 2.84 - 3.55 MHz NOPs"
     compute_nodes:
       master_cpu:
         role: "Primary execution, interrupts (/INT, /NMI), unconditional bus priority"
       slave_cpu:
         device: "Z80A on 75 x 55 mm daughterboard via Top-Mid 40-pin (2x20, Pin-20 keyed) female socket"
-        gating_and_rfsh_cutout: "2x 74LS244 (A[15:0]) + 1x 74LS245 (D[7:0]) + 1x 74LS125 (/MREQ,/IORQ,/RD,/WR) + 10k SIP; SLAVE_BUS_/OE = SLAVE_WAIT_ACT OR (NOT SLAVE_/RFSH) isolates T3-T4 I:R pins"
-        boot_identity: "Shares 0x0000 ROM; reads memory-mapped KBD/ID flag == 1 to branch to SLAVE_MONITOR"
+        gating_and_rfsh_cutout: "2x 74LS244 + 74LS245 + 74LS125 + 10k SIP; SLAVE_BUS_/OE = WAIT_ACT OR NOT /RFSH"
+        boot_identity: "Shares 0x0000 ROM; reads memory-mapped SYS_STATUS (+0x7FB) Bit 5 == 1 for SLAVE_MONITOR"
         basic_integration: "OFFLOAD keyword passes CH-ADD token pointer via 0x5BFA-0x5BFF mailbox using private IX"
     ula_video_and_memory_mapped_io:
-      package: "40-pin DIP ULA using active-scan vs. blanking/I/O pin time-slicing + external 1x 6116-12 (2048x8) attribute/palette SRAM"
-      eight_modes: "(ILACE_EXT, Y_EXT, H_EXT) -> 256x192p (6,912 B), 320x192p (8,640 B), 256x240p (8,640 B), 320x240p (10,800 B), 256x384i (13,824 B), 320x384i (17,280 B), 256x480i (17,280 B), 320x480i (21,600 B = 19,200 B bitmap + 2,400 B attr)"
-      color_modes: "ATTR_4B=0: vanilla [FLASH, BRIGHT, PAPER(3), INK(3)]; ATTR_4B=1: unrestricted [PAPER(4), INK(4)] 16x16 pairs; 2BPP + 4x4 mode: 2bpp pixels (4 colors/4x4 block) resolved via 2T+2T reads from 8-bit 6116 SRAM"
-      video_outputs: "Digital RGBI + CSYNC -> resistor DAC to RGB SCART (1:1 320px kinescope fidelity) + MC1377P composite PAL encoder"
+      package: "40-pin DIP ULA using active-scan vs. blanking/I/O pin time-slicing + 1x 6116-12 (2048x8) SRAM"
+      pin_sharing_map:
+        pins_15_to_18: "RGBI output during active scan vs. 6116 PAL_D[3:0] data write during blanking"
+        pins_19_20_23_24_26: "{SUB_ATTR[3:0], P1} lookup vs. T[4:0] keyboard inputs (via 10k series resistors)"
+        pins_21_22_25_27: "Shared D[7:4] vs. 6116 high nibble D[7:4] during 2BPP 2T+2T attribute fetch"
+      eight_modes: "(ILACE, Y_EXT, H_EXT) -> 256/320 x 192/240p and 384i/480i (6,912 B to 21,600 B VRAM)"
+      color_modes: "ATTR_4B=0: vanilla [FLASH,BRIGHT,P3,I3]; ATTR_4B=1: [P4,I4]; 2BPP+4x4 via 6116 2T+2T reads"
+      video_outputs: "Digital RGBI + CSYNC -> resistor DAC to RGB SCART (1:1 320px triad) + MC1377P PAL"
       zero_port_memory_mapped_io:
-        overview: "Zero /IORQ pins or port decoders (no 0xFE / 0x7F decode); ULA auto-copies 2,032 B attr/palette table from VRAM into 6116 SRAM during V-blank (lines 307-311, <=1,024T) and runs 16 B control/I/O DMA in H-blank"
-        control_block_offsets: "+0x7F0..+0x7F7: KBD_MATRIX[0..7] (1 row/line = 1.95 kHz); +0x7F8: ULA_CFG [ILACE, Y_EXT, H_EXT, ATTR_4B, 2BPP, BORDER[2:0]]; +0x7F9: BEEPER_MIC_OUT (15.625 kHz 1b/8b audio); +0x7FA: EAR_TAPE_IN (15.625 kHz); +0x7FB..+0x7FF: FRAME_CNT, SCANLINE_Y, PAL_BANK"
+        overview: "Zero /IORQ pins/ports; V-blank auto-DMA copies 2,032 B attr/palette to 6116 (lines 307-311)"
+        control_block_offsets: "+0x7F0..+0x7F7: KBD[0..7] (1.95 kHz); +0x7F8: ULA_CFG [7:ILACE,6:Y,5:H,4:A4B,3:2BPP,2..0:BDR]"
+        audio_tape_status: "+0x7F9: BEEPER_MIC (15.625 kHz 1b/8b); +0x7FA: EAR_IN; +0x7FB: SYS_STATUS (Bit 5=SLAVE_ID)"
     memory_map:
       - range: "0x0000-0x3FFF"
         size: "16 KB"
@@ -107,22 +113,23 @@ HANDOFF_PAYLOAD:
         size: "16 KB"
         type: "ROM_EXTRA (2x 8 KB 2764 UV-EPROM) linearly mapped"
         notes: "Laser BASIC, CP/M 2.2 BDOS/CCP, Beta Disk drivers; 0T contention"
-      - range: "0x8000-0xD45F"
+      - range: "0x8000-VRAM_TOP"
         size: "6,912 B - 21,600 B"
-        type: "DRAM (Video Screen + 2,048 B ULA Attr/Palette/IO Frame)"
-        notes: "6,912 B (256x192p) up to 21,600 B (320x480i); single-bit A15 == 1 decode"
-      - range: "0x9B00-0xFEFF"
+        type: "DRAM (Dynamic VRAM: 0x9AFF in 256x192p up to 0xD45F in 320x480i + 2 KB ULA frame)"
+        notes: "Single-bit A15 == 1 decode; ULA auto-DMAs attr/palette table to 6116 in V-blank"
+      - range: "(VRAM_TOP+1)-0xFEFF"
         size: "~10.9 KB - 25.5 KB"
-        type: "DRAM (Free User RAM in 32 KB base; +32 KB bank in 64 KB)"
-        notes: "25.5 KB free in 256x192p, 21.7 KB free in 320x240p, 10.9 KB free in 320x480i (41.5 KB effective w/ ROM_EXTRA)"
+        type: "DRAM (Contiguous Free User RAM in 32 KB base; +32 KB bank in 64 KB)"
+        notes: "25.5 KB free in 256x192p, 21.7 KB free in 320x240p, 10.9 KB free in 320x480i"
       - range: "0xFF00-0xFFFF"
         size: "~256 B+"
         type: "DRAM (RAMTOP System Area)"
         notes: "VARS, printer buffer, and stack placed at RAMTOP"
     pcb_enclosure_and_pricing:
-      mother_pcb: "~155 x 85 mm (132 cm2): core ISA-1 + ULA + MC1377P + 74LS glue; DRAM bottom (2x 26p keyed), ROM right (34p), Z80A Slave top-mid (40p Pin-20 keyed), SD[15:0] SRAM / external IDE top-right (40p Pin-21 keyed)"
-      dram_pcb: "120 x 65 mm bottom-seated PCB: 8x 4532-12 / 4x 4416-12 (32 KB base) or 16x 4164-12 (64 KB) with MA8 Pin-1 routing for 41256 (256K/512K)"
-      enclosure_and_psu: "335 x 150 x 30 mm wide wedge case: Left bay has grounded/EMI-shielded internal 10-12 VA AC PSU (IEC C14 + 4 mm creepage + vented 7805) under 4-post mezzanine rubber keyboard (12 mm cooling plenum + 14p ribbon); Right bay has hinged top hatch + rear louvers"
+      mother_pcb: "~155 x 85 mm (132 cm2): cut-ready bus corridor w/ GND/+5V brass compression screws; 5 keyed ports"
+      keyed_female_sockets: "DRAM 2x26p (Pin-13/14), ROM 34p, Z80 Slave 40p (Pin-20), SD16 SRAM 40p (Pin-21), Ext IDE 40p (Pin-22)"
+      dram_pcb: "120 x 65 mm bottom-seated PCB: wave-soldered DRAMs (8x 4532-12 / 4x 4416-12 or 16x 4164-12, MA8 Pin 1)"
+      enclosure_and_psu: "335 x 150 x 30 mm wide wedge: Left EMI-shielded 10-12 VA AC PSU under 4-post kbd; Right hatch"
       bom_and_retail_1982_1985:
         - "32 KB Mask ROM DIY Base: $40.47 BOM -> $119 - $129 Retail (~85 GBP / DM 319)"
         - "64 KB + 32 KB EPROM + Slave + SRAM Monolith PCB: $55.15 BOM -> $145 - $155 Retail (~105 GBP / DM 369)"
@@ -131,30 +138,30 @@ HANDOFF_PAYLOAD:
   machine_state:
     tracking_mode: "ABSTRACT"
     master:
+      registers:
+        main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
+        alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
+        idx:  { IX: "0x5C3A", IY: "0x5C3A", SP: "0xFFFF", PC: "0x0000" }
+        sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
+    slave:
+      registers:
+        main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
+        alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
+        idx:  { IX: "0x5BE0", IY: "0x5C3A", SP: "0x5BFE", PC: "0x0000" }
+        sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
+      mailbox:
+        SLAVE_BASIC_PTR: "0x5BFA (2 bytes)"
 Используйте код с осторожностью.
-registers:
-main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
-alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
-idx:  { IX: "0x5C3A", IY: "0x5C3A", SP: "0xFFFF", PC: "0x0000" }
-sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
-slave:
-registers:
-main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
-alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
-idx:  { IX: "0x5BE0", IY: "0x5C3A", SP: "0x5BFE", PC: "0x0000" }
-sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
-mailbox:
-SLAVE_BASIC_PTR: "0x5BFA (2 bytes)"
 SLAVE_PC: "0x5BFC (2 bytes)"
 SLAVE_CTRL: "0x5BFF (0x00=Idle, 0x01=MachineCode, 0x02=BASIC_OFFLOAD)"
 session_context:
 established_decisions:
-- "Locked PAL50 14.18758 MHz master crystal -> 7.09379 MHz VDP pixel clock + 3.546895 MHz CPU clock (227.0T/line) + 9T HSYNC-tail refresh."
-- "Revived 0.5T-phased 8+8 byte-sequencer on AD[7:0] (16-bit word in 1T via /WE_L & /WE_H) + BYTE_MODE=1 A0-steering for zero-RMW vanilla Z80A access."
-- "Adopted 40-pin time-sliced ULA + external 6116-12 (2048x8) SRAM with V-blank auto-DMA and 100% memory-mapped 16 B control/I/O block (zero /IORQ ports)."
-- "Defined 8 ULA modes (256/320 x 192/240p and 384i/480i) + ATTR_4B (4+4 Ink/Paper) + 2BPP 4x4 sub-attribute mode driving RGB SCART + MC1377P."
-- "Adopted single-pin SLAVE_/RFSH transceiver cutout (SLAVE_BUS_/OE = SLAVE_WAIT_ACT OR NOT SLAVE_/RFSH) and revised Z80A Slave speed to 2.15-3.35 MHz."
-- "Finalized 335 x 150 x 30 mm wide wedge case with internal EMI-shielded AC PSU, 4-post mezzanine keyboard, keyed female IDE sockets, and 1982-1985 BOM/retail tiers."
+- "Locked PAL50 14.18758 MHz crystal -> 7.09379 MHz VDP + 3.546895 MHz CPU (227.0T/line) + 9T HSYNC refresh."
+- "Locked 0.5T-phased 8+8 byte-sequencer on AD[7:0] (16b in 1T via /WE_L & /WE_H) + BYTE_MODE=1 for Z80A."
+- "Adopted 40-pin time-sliced ULA + 6116-12 (2048x8) SRAM with V-blank DMA + 16 B memory-mapped I/O (0 ports)."
+- "Defined 8 ULA modes (256/320 x 192/240p & 384i/480i) + ATTR_4B (4+4) + 2BPP 4x4 mode -> SCART + MC1377P."
+- "Locked SLAVE_/RFSH transceiver cutout (SLAVE_BUS_/OE = WAIT_ACT OR NOT /RFSH) -> 2.15-3.35 MHz Slave."
+- "Locked 335x150x30 mm wide wedge case, internal AC PSU, 4-post kbd, 5 keyed IDE ports, wave-soldered DRAMs."
 open_questions: []
 artifacts_in_flight:
 - "ISA-1 Prefix & 0xED Sub-Opcode Page (transposed 16x16 TSV, hex stripped)"
@@ -166,5 +173,5 @@ HANDOFF_EOF
 
 
 <FollowUp>
-Handoff checkpoint emitted in exact `HANDOFF-META/1.6` format (verbatim `META_SPEC`, updated `HANDOFF_PAYLOAD`, and `# HANDOFF_EOF` sentinel)—start a **new session** with this block, or ask for the **ISA-1 Prefix & `0xED` Sub-Opcode Page**?
+Repaired `Z80-ISA1-SYSTEM/2.1` handoff emitted with strict 2-space indentation, all lines under 110 characters, and all 7 session items locked—ready to start a **new session** or generate the **ISA-1 Prefix & `0xED` Sub-Opcode Page**?
 </FollowUp>
