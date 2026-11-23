@@ -1,0 +1,170 @@
+yaml
+# ==============================================================================
+# PART 1: IMMUTABLE HANDOFF META-SPEC (STATIC BOOTLOADER - DO NOT ALTER)
+# ==============================================================================
+META_SPEC:
+  version: "HANDOFF-META/1.6"
+  architecture: "Decoupled Meta-Bootloader + Integrity-Verified Domain Payload"
+  canonical_topics:
+    - "Z80 ISA-1"
+    - "ZX Spectrum 48K modifications"
+  boot_sequence:
+    - "1. Parse META_SPEC first to lock serialization and integrity rules."
+    - "2. Verify HANDOFF_PAYLOAD integrity: confirm top-level keys match payload_manifest.expected_sections and EOF sentinel '# HANDOFF_EOF' is present."
+    - "3. If truncation or unclosed quotes are detected, halt execution and report exact missing sections before proceeding."
+    - "4. Acknowledge readiness briefly (1 line max) and resume immediately at HANDOFF_PAYLOAD.next_action."
+  propagation_contract:
+    triggers: ["handoff", "checkpoint", "emit state", "save context"]
+    output_format: "Single valid YAML code block containing META_SPEC verbatim followed by updated HANDOFF_PAYLOAD and terminated by '# HANDOFF_EOF'."
+    non_negotiable_rules:
+      - "Keep all chat responses brief, dense, and free of filler."
+      - "Maintain Z80 ISA-1 and ZX Spectrum 48K modifications as the canonical scope of HANDOFF_PAYLOAD."
+      - "Do NOT display, inline, or emit YAML blocks, META_SPEC, or HANDOFF_PAYLOAD until explicitly asked via a propagation trigger or direct request."
+      - "Do NOT display, inline, or emit opcode pages or opcode tables in handoff blocks unless explicitly asked by the user."
+      - "Opcode page output format: single copyable code window, tab-separated values (TSV) for Excel, strip all hex indexes, and transpose (rows = low nibble 0-F, columns = high nibble 0-F)."
+    serialization_safety_rules:
+      - "Pure ASCII only; avoid raw '<', '>', or unescaped '|' inside double-quoted strings to prevent HTML/markdown parser stripping."
+      - "Keep lines under 110 characters to prevent copy-paste buffer slicing."
+      - "Always emit payload_manifest listing every required top-level key of HANDOFF_PAYLOAD."
+    invariance_rule: "Never embed granular ISA encodings, hardware schematics, or ephemeral project state into META_SPEC."
+  schema_evolution_rule:
+    - "Freely add, remove, or restructure keys inside HANDOFF_PAYLOAD within the canonical topics, updating payload_manifest accordingly."
+
+# ==============================================================================
+# PART 2: MUTABLE HANDOFF PAYLOAD (EVOLVING Z80 & COMPUTER CONTEXT)
+# ==============================================================================
+HANDOFF_PAYLOAD:
+  schema_id: "Z80-ISA1-SYSTEM/1.0"
+  payload_manifest:
+    expected_sections:
+      - "isa_profile"
+      - "hardware_environment"
+      - "machine_state"
+      - "session_context"
+      - "next_action"
+    sentinel: "HANDOFF_EOF"
+
+  isa_profile:
+    base_family: "Zilog Z80"
+    active_variant: "Z80 ISA-1 (Custom R800-Pipelined Core) + Vanilla Z80A Slave"
+    isa1_microarchitecture:
+      pipeline: "3-stage R800-style pipeline with 16-bit prefetch buffer"
+      on_die_sram: "512 x 16-bit (1 KB) zero-wait-state (V) scratchpad SRAM (auto-aligned word index 2*v)"
+      stack_fifo: "SELECT_SPx hardware Stack FIFO (1T PUSH/POP/CALL/RET; STK_POPULATE and STK_FLUSH)"
+      register_banks: "4-bank general register file (EXX0-EXX3)"
+      loop_accelerator: "Hardware-latched REP block loops (0 external opcode fetches)"
+      bus_interface: "MODE_MUX CPU-side DRAM address multiplexing; 1T Fast Page hits and 2T row misses"
+    extensions_enabled:
+      - "undocumented_8bit_idx: [IXH, IXL, IYH, IYL]"
+      - "undocumented_ops: [SLL]"
+      - "isa1_prefixes_and_ops: [WORD, IR, (V), SELECT_SPx, EXX0-EXX3, REP]"
+    dialect:
+      assembler: "sjasmplus"
+      syntax_rules:
+        - "Standard Zilog mnemonics plus ISA-1 prefix extensions"
+        - "Hex prefix: 0x | Binary prefix: 0b"
+      timing_model: "1T (250 ns @ 4.0 MHz) Fast Page / on-die SRAM; 2T random DRAM & odd-even ULA crossbar slots"
+
+  hardware_environment:
+    target_system: "Custom 1982-1985 ZX-Class Unified Computer (ISA-1 / Dual-Z80)"
+    clocks:
+      system_cpu_mhz: 4.000
+      ula_pixel_dot_mhz: 7.000
+      pal_chroma_subcarrier_mhz: 4.433619
+      scanline_budget: "256T per PAL scanline (64.00 us); 146.3T active display + 109.7T border/H-blank"
+    bus_crossbar:
+      topology: "8-bit AD[7:0] unified bus (8+8 16-bit path evicted for 16-chip cost parity)"
+      arbitration: "Low-loss Odd-Even 2T-slotted ULA/CPU crossbar (replaces ULA CLK-stretching)"
+      ula_fetch_mode: "Plain 2T reads into external 2x74LS373 ping-pong staging latches (offloads Ferranti 5C102E)"
+      effective_mhz:
+        isa1_master: "~3.85 - 3.93 MHz (96%-98% efficiency)"
+        vanilla_z80_master: "~3.40 - 3.45 MHz (~3.24 MHz @ 3.5 MHz clock)"
+        vanilla_z80_slave: "~1.20 - 1.45 MHz concurrent (~2.70+ MHz when Master runs in on-die SRAM/HALT)"
+    compute_nodes:
+      master_cpu:
+        role: "Primary execution, interrupts (/INT, /NMI), unconditional bus priority"
+      slave_cpu:
+        device: "Z80A (socketed or 1985-populated)"
+        arbitration: "SLAVE_WAIT = MASTER_BUS_ACTIVE OR ULA_BUSY; isolated via 74LS244 + 74LS245 during /WAIT"
+        boot_identity: "Shares 0x0000 Mask ROM; reads IN A,(0xFE) Bit 5 == 1 to branch to SLAVE_MONITOR"
+        basic_integration: "OFFLOAD keyword passes CH-ADD token pointer via 0x5BFA-0x5BFF mailbox using private IX"
+    memory_map:
+      - range: "0x0000-0x3FFF"
+        size: "16 KB"
+        type: "Mask ROM (23128 on edge carrier)"
+        notes: "Core BASIC, Z80_SLAVE Monitor, OFFLOAD parser, built-in EPROM burner; 0T contention"
+      - range: "0x4000-0x7FFF"
+        size: "16 KB"
+        type: "ROM_EXTRA (2 x 8 KB 2764 UV-EPROM sockets) OR 16 KB DRAM expansion"
+        notes: "Linearly mapped (zero paging); holds Laser BASIC, CP/M 2.2 BDOS/CCP, Beta Disk drivers; 0T contention"
+      - range: "0x8000-0x9AFF"
+        size: "6,912 B"
+        type: "DRAM (Video Screen)"
+        notes: "Vanilla 6,144 B bitmap + 768 B attributes; ULA decode checks single bit A15 == 1"
+      - range: "0x9B00-0xFEFF"
+        size: "~25.5 KB"
+        type: "DRAM (Free User RAM)"
+        notes: "Contiguous single-block user workspace (41.5 KB effective capacity with ROM_EXTRA)"
+      - range: "0xFF00-0xFFFF"
+        size: "~256 B+"
+        type: "DRAM (RAMTOP System Area)"
+        notes: "VARS, printer buffer, and stack placed at RAMTOP"
+    rom_and_programmer:
+      carrier_architecture: "Edge-connected ROM carrier PCB (replaces motherboard soldered ROM)"
+      population: "1 x 16 KB Mask ROM (replaces 2 sockets; modder-replaceable) + 2 x 28-pin 8 KB (2764-only) sockets"
+      onboard_programmer: "Software-timed bit-banged burner (~$0.85 BOM): NE555 + charge pump (12.5V/21V VPP), 2N3906/2N2222, 100R/1kR"
+    dram_and_pcb_manufacturing:
+      base_dram_1982: "32 KB (8 x 4532 single-rail +5V; eliminates -5V/+12V inverter)"
+      upgrade_path_1985: "16 x 16-pin DIP sites with MA8 on Pin 1 + 9-bit ULA refresh -> drop-in 4164 (64K/128K) or 41256 (256K/512K) + 0x7FFD"
+      pcb_topology: "Cut-ready corridor between CPU/ULA and ROM/DRAM; sheared and clamped via screw compression interposer (GND/+5V screws)"
+    io_ports:
+      - port: "0xFE"
+        notes: "Vanilla ULA border/keyboard/EAR/MIC + Read Bit 5 = Z80_SLAVE hardware ID flag"
+      - port: "0x7F"
+        notes: "ROM_EXTRA / DRAM bank toggle & VPP programming arm control"
+      - port: "0x7FFD"
+        notes: "Future-proof 16 KB bank-paging, shadow-screen flip, and Z80_SLAVE private page select"
+
+  machine_state:
+    tracking_mode: "ABSTRACT"
+    master:
+      registers:
+        main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
+        alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
+        idx:  { IX: "0x5C3A", IY: "0x5C3A", SP: "0xFFFF", PC: "0x0000" }
+        sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
+    slave:
+      registers:
+        main: { AF: "0x0000", BC: "0x0000", DE: "0x0000", HL: "0x0000" }
+        alt:  { AF_: "0x0000", BC_: "0x0000", DE_: "0x0000", HL_: "0x0000" }
+        idx:  { IX: "0x5BE0", IY: "0x5C3A", SP: "0x5BFE", PC: "0x0000" }
+        sys:  { I: "0x00", R: "0x00", IM: 1, IFF1: 0, IFF2: 0 }
+      mailbox:
+        SLAVE_BASIC_PTR: "0x5BFA (2 bytes)"
+        SLAVE_PC: "0x5BFC (2 bytes)"
+        SLAVE_CTRL: "0x5BFF (0x00=Idle, 0x01=MachineCode, 0x02=BASIC_OFFLOAD)"
+
+  session_context:
+    established_decisions:
+      - "Evicted 8+8 (16-bit) DRAM path on base board to stay within 16-chip cost; kept 8-bit AD[7:0] odd-even crossbar."
+      - "4.000 MHz system clock (256T/line) + 7.000 MHz vanilla pixel dot clock + 4.433619 MHz PAL chroma crystal."
+      - "Plain 2T ULA DRAM reads into external 2x74LS373 ping-pong latches (32B attribute cache evicted as redundant)."
+      - "Dual-Z80 shared-ROM architecture: Z80_SLAVE identifies via IN A,(0xFE) Bit 5, steals Z80_MASTER internal bus holes via /WAIT, supports BASIC OFFLOAD."
+      - "Memory map: 0x0000-0x3FFF Mask ROM, 0x4000-0x7FFF ROM_EXTRA (2x8K 2764 sockets + $0.85 NE555 burner), 0x8000-0x9AFF screen, 0x9B00-0xFEFF free RAM (~25.5 KB), VARS/stack at RAMTOP."
+      - "Cut-ready PCB corridor with screw-clamped compression interposer (GND/VCC via asymmetric brass screws) and MA8 Pin-1 routing for 1985 4164/41256 upgrades."
+      - "Completed 256-entry ISA-1 Main Opcode Table (TSV) and verified transposed 16x16 Vanilla Z80 Main Opcode Page (TSV, hex stripped)."
+    open_questions: []
+    artifacts_in_flight:
+      - "ISA-1 Prefix & 0xED Sub-Opcode Page (transposed 16x16 TSV, hex stripped)"
+
+  next_action:
+    objective: "Generate the ISA-1 Prefix & 0xED Sub-Opcode Page in transposed 16x16 TSV format (hex indexes stripped) or inspect a ZX Spectrum 48K hardware subsystem."
+Используйте код с осторожностью.
+constraints: "Follow META_SPEC HANDOFF-META/1.6 non-negotiable rules: keep responses brief, suppress YAML/opcode pages until asked, and format opcode pages as single-window transposed TSV with hex stripped."
+
+HANDOFF_EOF
+
+
+<FollowUp>
+Ready—would you like me to output the **ISA-1 Prefix & `0xED` Sub-Opcode Page** (transposed TSV) or detail a **ZX 48K hardware modification**?
+</FollowUp>
