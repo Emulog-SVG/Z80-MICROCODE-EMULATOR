@@ -1,0 +1,184 @@
+yaml
+meta_spec:
+  id: LLM-STATE-HANDOVER-v6.0-UNIFIED
+  obj: Lossless Z80 ISA-1 & ZX Spectrum 48K handover; bottom-up cascade decode, 0 stored grid variants, 0 invented ops.
+  strict:
+    no_guess: Never guess ambiguous/incomplete input. If deterministic mapping fails, HALT and ask only missing/ambiguous items (max 3).
+    replies: On edits, emit ONLY 1-line ACK (e.g., OK: +pg0 0001xxxx=ADD | FREE -1). On page views ("show main page"->pg1, "show pg0", "show hl_pg"), emit ONLY transposed 16x16 ```tsv (rows=low 0..F, cols=high 0..F; op=(col<<4)|row; no hex headers; gaps=---). 0 prose. Append " | [HANDOVER_REC]" after ~15 edits or ~5 TSV dumps.
+    export: Keep meta_spec & isa_state internal on normal turns. On export/handover request, coalesce adjacent FREE masks, prune dead overrides, emit ONLY single unbroken ```yaml block with verbatim meta_spec + compacted isa_state + EOF sentinel; 0 prose before/inside/after.
+    ingest: On `CHUNK i/N` or `PART i` (i<N), buffer silently -> reply `ACK i/N`. On `END`, `i==N`, or raw URL load -> merge, audit, reply `READY`. Auto-iterate all entries in `reference_corpora` on session start before ROI/opcode analysis.
+    compress: Apply terse domain abbrs (pg, def_pg, esc, sw, pfx, op, sem, var, excl, recon, hw) & macro arrays inside isa_state only; keep meta_spec verbatim, pure ASCII, lines <= 115 chars.
+    gen_isa: Store ONLY canonical base pages (pg0 + non-derived esc pgs) as bottom-up cascade bit-masks (MASK=MNEM | flags). Define sibling main pgs (pg1..pg3) & RR-prefixed pgs as deterministic mutation rules over pg0; recon on demand via transform rules & !immune locks.
+    slots: Track unallocated/evicted patterns per page as FREE / ---. Fill FREE only via user-migrated ops (freeing source) or user-defined ops; 0 auto-fill/invention.
+    audit: On writes/exports, internally verify (1) 256/256 deterministic coverage & 0 mask collisions across canonical & derived pages, (2) 4-point RR PLA truth-table invariants (uniform group branch target addressing, active EXX without suffix on mutated (RR+)/(SP)->(RR+), REV/*R/*WR swaps all 2-op LEFT<->RIGHT while leaving 1-op intact, explicit left A on all RR ALU ops), (3) all custom abbrs resolve, (4) `reference_corpora` verbatim preserved & URL-checked. Abort export & ask up to 4 issues on failure.
+  exec: Enforce strict; audit on writes & exports.
+
+isa_state:
+  arch: Z80 ISA-1 (Custom NMOS Hybrid R800-Pipelined Core + Vanilla Z80A Slave; Z80-EX v7.9.6 lossless ISA root)
+  def_pg: pg1 # MODE_V active at reset; pg0 (MODE_Z) is canonical mutation root
+  macros:
+    R8: [B,C,D,E,H,L,(HL),A]
+    RR4: [BC,DE,HL,SP]
+    RR8: [AW,BC,DE,HL,IX,IY,SP,V]
+    HALF_RR: {AW: A/W, BC: B/C, DE: D/E, HL: H/L, IX: IXH/IXL, IY: IYH/IYL, SP: S/P, V: VH/VL}
+    CC4: [NZ,Z,NC,C]
+    CC_EVEN: [PO,PE,P,M]
+    CC8: [NZ,Z,NC,C,PO,PE,P,M]
+    EXX_BANKS: [EXX0,EXX1,EXX2,EXX3] # explicit 0..3 suffix for targeted banks; omit suffix for active latch
+    FLAGS: { "!": "!immune", "?": "[fut]", n: imm8, nn: imm16, dd: rel16, e: rel8 }
+
+  reference_corpora:
+    - name: elite48k.txt
+      url: "https://githubusercontent.com"
+      anchors: [LL9, LL38, MVS5, HLOIN, DOEXP, ZINF, TT26, TT170, FLKB]
+      role: "3D wireframe engine, matrix math, line clipping, EXX shadow-bank heavy routines"
+    - name: zxsprom.txt
+      url: "https://githubusercontent.com"
+      role: "Geoff Wearmouth 0x0000..0x3FFF ZX Spectrum 48K ROM disassembly (FP calc, channels, RST hooks)"
+    - name: terramex.txt
+      url: "https://githubusercontent.com"
+      role: "Arcade-adventure tile blitter, masked sprite loops, entity struct indexing"
+    - name: shark.txt
+      url: "https://githubusercontent.com"
+      role: "Vertical shoot-em-up high-speed object/bullet loops, IX/IY struct tables, SP-trick blitters"
+    - name: nebulus.txt
+      url: "https://githubusercontent.com"
+      role: "Cylindrical 3D tower renderer, SoA IX+d actor tables, SP-trick blitters, 53-slot JP trampoline"
+    - name: bloat10.txt
+      url: "https://githubusercontent.com"
+      role: "Locality / code bloat benchmark assembly corpus (ask user to paste raw text if unindexed)"
+
+  hw_invariants:
+    isa1_microarch:
+      pipeline: "3-stage R800-style pipeline + 16b prefetch buffer; distributed Phi1/Phi2 6T latches at D[7:0] pad ring (~95-110 ns half-T)"
+      bus_dual_pc: "dram_pc (64KB ext 8b bus via 0.5T-phased 8+8 byte-sequencer on AD[7:0], 1T Fast Page / 2T row miss); sram_pc (0WS 16b Local SRAM/opcache); V = 0WS SRAM window ptr"
+      external_word_sram: "4x 2114L-2 (200ns, 1T) or 2114H-1 (120ns, 0.5T) 512x16 (1KB base, scalable to 64KB) on SD[15:0] (40p Pin-21 keyed)"
+      loop_accel: "Hardware-latched REP block loops (0 external opcode fetches)"
+      dialect: "sjasmplus (standard Zilog mnemonics + ISA-1 prefixes; 0x hex, 0b binary)"
+    regs_banks:
+      banks: "4 banks EXX0..3 selected by 2b latch (0xCA/DA/EA/FA); per-bank {AW,BC,DE,HL,IX,IY,SP,V,F} evicted to 0WS 16b SRAM"
+      link_reg: "LR (16b internal link/scratch reg: LR0=lo, LR1=hi, updated on A writes)"
+      sp_binding: "All stack ops (*CALL,*RET,LDI/LDD (SP),PUSH/POP n,EX (SP),RR,INC/DEC SP) bind permanently to EXX0.SP (1T in SRAM); EXX0..3 switch NEVER switches SP or flushes Stack FIFO (flushes only on EXX0.SP write or (EXX0.SP+d) index)"
+    m1_pipeline:
+      model: "Stateless M1 prefix latch loop (Z80 DD/FD style); terminal esc pgs: 0x27=LRPAGE, 0x2F=BITPAGE, 0x3F=BITPAGE$"
+      tiers: "T1: ACT_CC (0x88..8F, main-only infinite skip guard) -> T2: R0..R7 (0x98..9F, main-only 1..8 rep count) -> T3: infinite RR/modifier stream"
+      rr_shift: "2-stage latches rr_prev, rr_curr (init 0); on RR pfx: rr_prev<-rr_curr, rr_curr<-new_rr; rr_curr sets active ptr/AM/pg"
+      shadow_gather: "Each RR pfx updates LEFT/RIGHT bank latches via SS<RR> (boot SSDEF: AW:L1, BC:R1, DE:X1, HL:XC, IX:L2, IY:R2, SP:X2, V:XC)"
+      width_rev: "Trailing-W (*W/*WR) sets shadow_w=1 (WORD), non-W sets 0 (BYTE) [last-wins]; REV (0x37) or trailing-R (*R/*WR) sets rev_latch=1 (swaps LEFT<->RIGHT on 2-op insts, single-op intact, non-destructive across subsequent non-REV pfxs, auto-clears at retirement)"
+      sticky_rr: "2 identical consecutive RR pfxs (RR_x + RR_x) lock rr_curr, shadow triggers, & width across subsequent insts; exits on new RR_y or MODE_*"
+    am_rr_modes: "3b per-reg latch via AM<RR> n/LR on LRPAGE: 0:NONE (RR) | 1:+D (RR+sext16(d8))[+1B] | 2:+DD (RR+s16)[+2B] | 3:INC (RR)+[+1B/+2W] | 4:DEC (RR)-[+1B/+2W] | 5:+HL1 (RR+EXX1.HL)[0B] | 6:+HL2 (RR+EXX2.HL)[0B] | 7:+HL3 (RR+EXX3.HL)[0B]"
+    ss_rr_modes: "6b per-reg latch (n[2:0]=LEFT, n[5:3]=RIGHT) via SS<RR> n on LRPAGE; codes {0:EXX0, 1:EXX1, 2:EXX2, 3:EXX3, 4:CURR}; 0x27 0xD9=SSDEF"
+    zx48k_platform:
+      target: "Custom 1982-1985 PAL50 ZX-Class Unified Computer (ISA-1 Master ~3.45-3.50 MHz + Z80A Slave ~2.15-3.35 MHz, Wide Wedge)"
+      clocks: "14.18758 MHz crystal -> 7.09379 MHz VDP + 3.546895 MHz CPU (227.0T/line: 160T active, 24.5T border, 42.5T H-blank w/ 9T HSYNC refresh)"
+      bus_arbitration: "Odd-Even 2T ULA/CPU crossbar; BYTE_MODE=1 gates /CAS_L,/WE_L via /A0 & /CAS_H,/WE_H via A0 for Z80A; SLAVE_BUS_/OE = WAIT_ACT OR NOT /RFSH"
+      ula_mmio: "40p DIP ULA + 6116-12 (2048x8) SRAM; 0 /IORQ ports; V-blank DMA copies 2,032B attr/palette (lines 307-311); 8 modes (256/320 x 192/240p & 384i/480i), ATTR_4B, 2BPP+4x4 -> SCART + MC1377P; MMIO +0x7F0..7F7 KBD, +0x7F8 ULA_CFG, +0x7F9 BEEPER_MIC, +0x7FA EAR_IN, +0x7FB SYS_STATUS (Bit5=SLAVE_ID)"
+      memory_map: "0x0000-3FFF Mask ROM/2x2764 (BASIC, Slave Monitor, OFFLOAD parser, NE555 burner) | 0x4000-7FFF ROM_EXTRA (Laser BASIC, CP/M 2.2, Beta Disk) | 0x8000-VRAM_TOP Dynamic VRAM (6,912-21,600B) | VRAM_TOP+1..0xFEFF User RAM (32KB/64KB banked) | 0xFF00-FFFF RAMTOP; Slave mailbox 0x5BFA-5BFF (IX=0x5BE0, SP=0x5BFE)"
+      enclosure_bom: "155x85mm mother PCB (5 keyed ports) + 120x65mm DRAM PCB + 75x55mm Slave PCB in 335x150x30mm wedge; $40.47-$58.90 BOM -> $119-$169 retail"
+    fut_discovery: "tri_op_3_operand_alu: when k>=2 RR pfxs stream in M1, pair penultimate latch rr_prev (RIGHT/src2) with final latch rr_curr (LEFT/dst/src1) on 16b ALU/mem-mem ops (rr_curr <- rr_curr op rr_prev)"
+
+  pg0: # MODE_Z (canonical root, 256/256 covered via bottom-up cascade)
+    # 1. Base Z80 blocks (auto-rewritten {(HL),(nn),nn}->(V) in pg1 unless marked !)
+    00xx0001: "LD RR4[x],nn"
+    000x0010: "LD [(BC),(DE)],A"
+    001x0010: "LD (nn),[HL,A]"
+    00xx0011: "INC RR4[x]"
+    00xxx10x: "[INC,DEC] R8[x]"
+    00xxx110: "LD R8[x],n"
+    000x0111: "[RLCA,RLA]"
+    001x1000: "JR CC4[x+2],e"
+    00xx1001: "ADD HL,RR4[x]"
+    000x1010: "LD A,[(BC),(DE)]"
+    001x1010: "LD [HL,A],(nn)"
+    00xx1011: "DEC RR4[x]"
+    000x1111: "[RRCA,RRA]"
+    01xxxyyy: "LD R8[x],R8[y]"
+    10000xxx: "ADD A,R8[x]"
+    10010xxx: "SUB R8[x]"
+    10100xxx: "AND R8[x]"
+    10111xxx: "CP R8[x]"
+    11xx0010: "JP CC4[x],nn"
+    11000011: "JP nn"
+    11xx0110: "[ADD A,,SUB ,AND ,OR ]n"
+    11xx1000: "RET CC4[x]"
+    11001001: "RET"
+    11xx1100: "CALL CC4[x],nn"
+    11001101: "CALL nn"
+    11xx1110: "[ADC A,,SBC ,XOR ,CP ]n"
+
+    # 2. Custom Overrides & !immune Extensions (bottom-up precedence over base)
+    00xx0000: "[EX !, LOOP e, JR NZ,e, JR NC,e]"
+    00100111: "LRPAGE | esc:pg !"
+    00110111: "REV | pfx:rev !"
+    000x1000: "[EXW !, JR e]"
+    001x1111: "[BITPAGE, BITPAGE$] | esc:pg !"
+    01xx0001: "LD [B,D,H],LR !"
+    01xx0100: "LD LR,[B,D,H] !"
+    01xxx110: "[LDZ,LD1,LD2,LDM,LDS,LDF,-,-] LR !" # 0x76 overwritten below by SPX2
+Используйте код с осторожностью.
+01xx1001: "LD [C,E,L],LR !"
+01xx1100: "LD LR,[C,E,L] !"
+01xxx_xxx: "[AWL1,BCR1,DEX1,HLXC,IXL2,IYR2,SPX2,VXC] | pfx:rr_chain !"
+10001xxx: "ACT_CC CC8[x] | pfx:skip_guard !"
+10011xxx: "R[0..7] | pfx:rep_latch !"
+10101xxx: "[AWL1W,BCR1W,DEX1W,HLXCW,IXL2W,IYR2W,SPX2W,VXCW] | pfx:rr_w !"
+101100xx: "[AWL1WR,BCR1WR,DEX1WR,HLXCWR] | pfx:rr_wr !"
+101101xx: "MODE_[Z,V,WZ,WV] | sw:main_pg[0..3] !"
+11xx0000: "DEST_[BC,DE,V,AW] | pfx:dst !"
+11xx0001: "LDI RR4[0..2]|AW,(SP) !"
+11xx0011: "[JP nn, IR !, DR !, XJP n !]"
+11xx0100: "[LOOP BC2,n !, LOOP DE2,n !, LOOP BC2,AW2 !, LOOP DE2,HL2 !]"
+11xx0101: "LDD (SP),RR4[0..2]|AW !"
+11xx0111: "[WORDB, SWORDB, SWORDW, ANDXOR LR,A] !"
+11xx1001: "[RET, IRLR !, DRLR !, XRET !]"
+11xx1010: "EXX[0..3] | sw:bank[0..3] !"
+11xx1011: "[QLOAD n !, LZX LR !, ZLOAD n !, VLOAD n !]"
+11xx1101: "[CALL nn, IRNZ !, DRNZ !, XCALL n !]"
+11xx1111: "TO([BC,DE,V,AW]) !"
+derived_pgs:
+pg1: # MODE_V (default active reset page)
+base: pg0
+recon: "rewrite all non-! operand tokens {(HL),(nn),nn} -> (V) [0x21 & 0x2A both -> LD HL,(V)]"
+pg2: # MODE_WZ
+base: pg0
+recon: "alias pg0 with 16-bit word operand promotion"
+pg3: # MODE_WV
+base: pg1
+recon: "alias pg1 with 16-bit word operand promotion"
+rr_pgs: # 8 specialized RR pages (id 0..7 = AW,BC,DE,HL,IX,IY,SP,V)
+base: pg0
+evict_to_free: "0x88..8F (ACT_CC), 0x98..9F (R0..7), 0xCA/DA/EA/FA (EXX0..3) -> 20 FREE (---) slots"
+populate_slots: "0xB4..B7 (MODE_*) -> [AWL1R, BCR1R, DEX1R, HLXCR]"
+restore_block: "0x40..7F restores full LD R8[x],R8[y] EXCEPT 8 diagonal RR pfxs (01xxx_xxx)"
+mut_operands:
+- "(HL) -> (RR+) in active EXX (obeys AM)"
+- "If id!=6 (non-SP): (SP) in LDI/LDD -> (RR+) in active EXX (LDI +2, LDD -2 even under REV)"
+- "H/L half-regs -> HALF_RR[RR]; ALU ops display explicit left A (e.g. SUB A,B)"
+mut_branches:
+- "Even id (0,2,4,6): CC4 -> CC_EVEN [PO,PE,P,M], 0xC9 -> RETN; Odd id (1,3,5,7): CC4 -> [NZ,Z,NC,C], 0xC9 -> RETI"
+- "Pair 0 (id 0,1): JP/CALL=nn, JR/LOOP=e | Pair 1 (id 2,3): all=dd | Pair 2 (id 4,5): all=(V) | Pair 3 (id 6,7): all=rel(V)"
+esc_pgs:
+lrpage_0x27:
+0xB4..0xB8: "[PUSH n, POP n, VSAVE n, BINTR, X2200]"
+0xB9..0xC0: "AM<RR8[0..7]> n"
+0xC1..0xC8: "AM<RR8[0..7]> LR"
+0xC9..0xD0: "LD A,AM<RR8[0..7]>"
+0xD1..0xD8: "SS<RR8[0..7]> n"
+0xD9: "SSDEF"
+0xDA..0xE1: "LD A,SS<RR8[0..7]>"
+bitpage_0x2F:
+00000xxx: "RLC R8[x] (with (HL)->(RR+))"
+00001xxx: "RRC R8[x] (with (HL)->(RR+))"
+00010xxx: "SHLC R8[x] (with (HL)->(RR+))"
+00011xxx: "SHRC R8[x] (with (HL)->(RR+))"
+00100xxx: "SHLZ R8[x] (with (HL)->(RR+))"
+00101xxx: "SHRZ R8[x] (with (HL)->(RR+))"
+00110xxx: "SHR7 R8[x] (with (HL)->(RR+))"
+00111xxx: "FREE"
+01bbbxxx: "BIT bbb,R8[x] (with (HL)->(RR+))"
+10bbbxxx: "RES/BTR bbb,R8[x] (with (HL)->(RR+))"
+11bbbxxx: "SET/BTS bbb,R8[x] (with (HL)->(RR+))"
+bitpage_dollar_0x3F: "identical to 0x2F with forced +d signed 8-bit displacement"
+
+HANDOFF_EOF
+
