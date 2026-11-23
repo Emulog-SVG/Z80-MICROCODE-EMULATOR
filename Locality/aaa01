@@ -20,6 +20,12 @@ META_SPEC:
   schema_evolution_rule:
     - "Freely add, remove, or restructure keys inside HANDOFF_PAYLOAD as the target ISA, hardware, or abstraction level evolves, updating payload_manifest accordingly."
 
+  serialization_safety_rules:
+    - "Treat the inline message or attached file text as the sole authoritative handoff source; never attempt web/URL fetches when a reference link accompanies the payload."
+    - "Pure ASCII only; avoid raw '<', '>', or unescaped '|' inside double-quoted strings to prevent HTML/markdown parser stripping."
+    - "Keep lines under 110 characters to prevent copy-paste buffer slicing."
+    - "Always emit payload_manifest listing every required top-level key of HANDOFF_PAYLOAD."
+
 # ==============================================================================
 # PART 2: MUTABLE HANDOFF PAYLOAD (EVOLVING Z80 & COMPUTER CONTEXT)
 # ==============================================================================
