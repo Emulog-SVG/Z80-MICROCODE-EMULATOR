@@ -1,197 +1,311 @@
-Here is the complete isa_state handover YAML properly terminated with HANDOFF_EOF:
 yaml
+meta_spec:
+  id: LLM-STATE-HANDOVER-v6.0-UNIFIED
+  obj: Lossless Z80 ISA-1 & ZX Spectrum 48K handover; bottom-up cascade decode, 0 stored grid variants, 0 invented ops.
+  strict:
+    no_guess: Never guess ambiguous/incomplete input. If deterministic mapping fails, HALT and ask only missing/ambiguous items (max 3).
+    replies: On edits, emit ONLY 1-line ACK (e.g., OK: +pg0 0001xxxx=ADD | FREE -1). On page views ("show main page"->pg1, "show pg0", "show hl_pg"), emit ONLY transposed 16x16 ```tsv (rows=low 0..F, cols=high 0..F; op=(col<<4)|row; no hex headers; gaps=---). 0 prose. Append " | [HANDOVER_REC]" after ~15 edits or ~5 TSV dumps.
+    fut_capture: Scan session context on every export; auto-flush all unbound assumptions, tentative microarch ideas, & unallocated concepts into isa_state.future_tasks as terse key-summary entries (deduped, 0 prose); promote to hw_invariants/pg0 only on explicit commit.
+    export: Keep meta_spec & isa_state internal on normal turns. On export/handover request, run fut_capture, coalesce adjacent FREE masks, prune dead overrides, emit ONLY single unbroken ```yaml block with verbatim meta_spec + compacted isa_state + EOF sentinel; 0 prose before/inside/after.
+    ingest: On `CHUNK i/N` or `PART i` (i<N), buffer silently -> reply `ACK i/N`. On `END`, `i==N`, or raw URL load -> merge, audit, reply `READY`. Auto-iterate all entries in `reference_corpora` on session start before ROI/opcode analysis. On empty/404/inaccessible URL, treat accompanying inline text or auto-boxed attachment block (`File: [source: N]...`) as URL payload (no HALT/error).
+    compress: Apply terse domain abbrs (pg, def_pg, esc, sw, pfx, op, sem, var, excl, recon, hw) & macro arrays inside isa_state only; keep meta_spec verbatim, pure ASCII, lines <= 115 chars.
+    gen_isa: Store ONLY canonical base pages (pg0 + non-derived esc pgs) as bottom-up cascade bit-masks (MASK=MNEM | flags). Define sibling main pgs (pg1..pg3) & RR-prefixed pgs as deterministic mutation rules over pg0; recon on demand via transform rules & !immune locks.
+    slots: Track unallocated/evicted patterns per page as FREE / ---. Fill FREE only via user-migrated ops (freeing source) or user-defined ops; 0 auto-fill/invention.
+    audit: On writes/exports, internally verify (1) 256/256 deterministic coverage & 0 mask collisions across canonical & derived pages, (2) 4-point RR PLA truth-table invariants (uniform group branch target addressing, active EXX without suffix on mutated (RR+)/(SP)->(RR+), REV/*R/*WR swaps all 2-op LEFT<->RIGHT while leaving 1-op intact, explicit left A on all RR ALU ops), (3) all custom abbrs resolve, (4) `reference_corpora` verbatim preserved & URL-checked. Abort export & ask up to 4 issues on failure.
+  exec: Enforce strict; audit on writes & exports.
+
 isa_state:
-  version: "2.5-handover"
-  updated: "2026-11-25"
-  target_era: "1981-1983 NMOS Custom SoC + Fast/ALS TTL"
-  package_target: "40-pin PDIP (CPU & ULA/VDP)"
-
+  arch: Z80 ISA-1 (Custom NMOS Hybrid R800-Pipelined Core + Vanilla Z80A Slave; Z80-EX v7.9.6 lossless ISA root)
+  def_pg: pg1 # MODE_V active at reset; pg0 (MODE_Z) is canonical mutation root
+  reference_corpora:
+    - "https://githubusercontent.com"
+    - "https://githubusercontent.com"
   clocks:
-    master_osc_mhz: 14.18758
-    quarter_t_ns: 70.484        # 1Q = 1 / 14.18758 MHz (DDS_L / DDS_H beat width = 35.24 ns half-Q)
-    half_t_ns: 140.968          # 1H = 0.5T (Phi1 / Phi2)
-    cpu_t_mhz: 3.546895
-    cpu_t_ns: 281.936           # 1T = 4Q
-    vdp_pixel_mhz: 7.09379      # Primary 320px TV/composite pixel clock (140.97 ns/px)
-    vdp_hires_mhz: 14.18758     # High-res 640px RGB SCART / BURST_DIS pixel clock (70.48 ns/px)
-    pal_scanline_t: 227.0       # 160T active (45.11 us) + 24.5T border + 42.5T H-blank
-    pal_field_lines: 312.5      # 50 Hz interlaced PAL (288 visible lines/field, 240 safe-area active)
-
-  zx48k_platform:
-    bom_wholesale_usd:
-      single_cpu_isa1: "38.27 - 56.70"
-      dual_cpu_with_z80a_slave: "41.77 - 61.70"
-    retail_target_usd:
-      single_cpu_isa1: "115 - 165"
-      dual_cpu_with_z80a_slave: "123 - 175"
-    crossbar_retail_bump_usd: "+4.15 to +6.60 gross (offset by -1 DRAM ADDR_BUF IC and optional single-CPU build)"
+    master_osc_mhz: 14.18758 # 1Q=70.484ns, 0.5Q=35.24ns (DDS_L/H beat), 1H=140.968ns, 1T=281.936ns (3.546895MHz)
+    vdp_px_mhz: 7.09379 # primary 320px TV/comp clk (140.97ns/px); 14.18758MHz for 640px RGB SCART / BURST_DIS
+    pal_raster: "227.0T/line (160T active 45.11us + 24.5T border + 42.5T H-blank); 312.5 lines/field 50Hz PAL"
+  macros:
+    R8: [B,C,D,E,H,L,(HL),A]
+    RR3: [BC,DE,HL]
+    RR4: [BC,DE,HL,SP]
+    RR8: [AW,BC,DE,HL,IX,IY,SP,V]
+    SETLR_RR: [AW,BC,DE,HL,IX,IY,SP,F]
+    SETLR_IND: [(BC),(DE),(HL),(LR)]
+    SETLR_IDX: [(IX+d),(IY+d),(SP+d),(LR+d)]
+    RR_AFFECT16: [AW,BC,DE,HL,IX,IY,SP,(V),LR,EF,PC,(NN),rsvd,rsvd,rsvd,rsvd] # V==(V) vector access
+    HALF_RR: {AW: A/W, BC: B/C, DE: D/E, HL: H/L, IX: IXH/IXL, IY: IYH/IYL, SP: S/P, V: VH/VL}
+    CC4: [NZ,Z,NC,C]
+    CC_EVEN: [PO,PE,P,M]
+    CC8: [NZ,Z,NC,C,PO,PE,P,M]
+    CC32:
+      - [NZ, Z, NC, C, PO, PE, P, M, BE, A, L, GE, LE, G, H, NH] # 0..15 single-step F
+      - [ZZ, NZZ, BEZ, AZ, LEZ, GZ, VV, CC] # 16..23 cascaded F + OLD_F (Z_pair = Z & Zp)
+      - [OVP, OVN, NC2, C2, CEZ, CNZ, ADD, SUB] # 24..31 saturation, bounds & step-delta
+    EXX_BANKS: [EXX0,EXX1,EXX2,EXX3] # explicit 0..3 suffix for targeted banks; omit suffix for active latch
+    FLAGS: { "!": "!immune", "?": "[fut]", n: imm8, nn: imm16, dd: rel16, e: rel8 }
 
   hw_invariants:
+    least_tr_solution:
+      base_evolution: "Vanilla Z80 main pg is lowest-TR root; evolve by evicting low-ROI ops then migrating pfxs"
+      word_vanilla_mutation_test: "WORD pfx family originally applied over vanilla Z80 main pg as root"
+      virtual_first_allocation: "All new ISA ops/pfxs added first as virtual defs before physical slot binding"
+      lr_latch_mutation: "Single LR latch tracks parent RR pair + addr mode of last DEST; mutates explicit LR ops"
+      aw_accumulator_pair: "16b accumulator pair AW (A:W) pairs existing 8b A with companion byte W"
+      ef_extended_flags: "16b extended flags pair EF pairs existing 8b F with companion byte E / OLD_F"
+      old_f_history_latch: "Single-byte OLD_F latch captures prior F on flag updates for cascaded (F, OLD_F)"
+      nibble_alu_16b_2t: "4b sliced ALU executes 16b ALU ops in 2T (1T+1T two-phase nibble pipeline)"
+      e_carry_16b: "16b carry/bitfield shift-buffer CY[15:0] (CY==F.C); binds CY as LR"
+      mode_v_window: "MODE_V (pg1 default reset) rewrites non-! {(HL),(nn),nn} operands to 0WS SRAM window ptr (V)"
+      word_prefix: "WORD pfx promotes 8b operands across target ops to 16b word width on 2T nibble ALU"
+      act_cc_fixed: "Hardwired ACT_CC[0..7] skip-guard fixed to CC8; fast-skip advances PC past trailing bytes"
+      rep0_7_9b_fuse: "REP0..REP7 chained pfxs shift 9b repeat latch left by 3 bits (0..511 repeats)"
+      external_sram_1024b: "4x 2114-12 (512x16=1KB) or 2x 6116-12 (4KB), scalable to 64KB; 74ALS373/74F573 Phi1 latch"
+      stack_fifo: "Hardwired to EXX0.SP at SRAM_TOP; spills 4B/burst to DRAM; STACK_DEPTH/FLUSH/FETCH"
+      stack_fifo_memcpy: "STACK_FETCH at src SP then STACK_FLUSH at dst SP performs zero-CPU-loop bulk memcpy"
+      push_pop_lr_bind: "PUSH/POP RR sets LR to pushed/popped RR; 0xF1=POP LR, 0xF5=PUSH LR"
     zero_gap_bitslice_floorplan:
-      blocks: ["PLA Decoder", "Register Field", "16-bit ADDER", "Dual-Nibble 8-bit ALU"]
-      isolation_ns: "7 - 11 ns pass-gate isolation"
-      byte_order_lock: "AB:AA (AB = high byte, AA = low byte); SIGN_EXT latch for signed displacement"
-      pla_drive_rule: "Loading DL (DECODER_LATCH) directly drives PLA decode; every canonical sequence self-chains with trailing LD:W DL,(...)"
-
+      layout: "Abutted PLA Decoder | Reg Field | 16b ADDER | Dual-Nibble 8b ALU (7-11ns pass-gate isolation)"
+      locks: "AB:AA high:low byte order; SIGN_EXT latch; loading DL directly drives PLA decode (trailing LD:W DL)"
     two_tier_stall_and_clock_gating:
-      short_dram_pacing_1q_to_4q:
-        method: "Synchronous 14.18758 MHz OR-gate CPU_CLK high-park BEFORE non-overlapping Phi1/Phi2 generator"
-        granularity_ns: 70.484
-        max_high_park_ns: 2000  # Z80A / NMOS dynamic-node retention limit
-        use_case: "Paces -25 (250 ns -> 1.5T = 422.9 ns) and -30/-37 (300-375 ns -> 2.0T = 563.9 ns) salvage DRAMs without runt pulses or Phi1/Phi2 skew"
-      long_stalls_gt_4t:
-        method: "Free-running Phi1/Phi2 clock with decoder state-hold on !DATA_READY / WAIT_SAMPLED + weak depletion keepers"
-        use_case: "BUSRQ/BUSACK DMA grants, >4T ULA/peripheral stalls, HALT loops"
-
+      short_1q_to_4q: "Synchronous 14.18758MHz OR-gate CPU_CLK high-park BEFORE Phi1/Phi2 gen (70.48ns steps, <=2000ns)"
+      long_gt_4t: "Free-running Phi1/Phi2 with decoder state-hold on !DATA_READY/WAIT_SAMPLED + depletion keepers"
     virt_en_34pin_rerole:
-      trigger: "VIRT_EN = NOR(/IORQ, /RFSH) (both /IORQ=0 and /RFSH=0 impossible in vanilla Z80)"
-      fixed_pins_6: ["CLK", "/RESET", "VCC", "GND", "/IORQ", "/RFSH"]
-      rerole_pins_34:
-        dds_dram_14pin:
-          pins: ["AD[7:0]", "A8", "A9", "/WE_L", "/WE_H", "WAIT_SAMPLED", "CROSSBAR_ODD_EVEN"]
-          protocol:
-            - "Speculative continuous-read assumption: /WE_L=1 & /WE_H=1 executes default 1T DDS Read on every CPU crossbar slot; CPU discards DATAPINS if no RCYCLE/LD active"
-            - "Write override: asserting /WE_L=0 and/or /WE_H=0 converts the 1T slot into byte or 16-bit word Early Write"
-            - "Linear addressing up to 1 MB via AD[7:0] Row/Col + muxed A8/A9"
-            - "CROSSBAR_ODD_EVEN is an input driven directly by VDP master pin to frame 1T Odd/Even slots"
-            - "WAIT_SAMPLED is sampled continuously during LD:* capture phase (1T..3T variable DRAM/contention support)"
-        sram_16bit_muxed_18pin:
-          pins: ["SD[15:0]", "/SWE_L", "/SWE_H"]
-          protocol:
-            - "0.5T cycle: Phi1 drives 16-bit address SA[15:0] (latched externally by 74ALS373/74F573 on Phi1->Phi2), Phi2 transfers 16-bit data SD[15:0]"
-            - "Same always-read / write-override convention: /SWE_L=1 & /SWE_H=1 = 16-bit Read; /SWE_L=0 and/or /SWE_H=0 = Low/High byte or Word Write"
-            - "Supports 512x16 (1 KB) up to 32Kx16 (64 KB) linear SRAM concurrently with DDS DRAM"
-        interrupt_pins_2: ["/INT", "/NMI"]
-      auto_disarm_to_vanilla_z80:
-        conditions: ["EPROM read (0x0000-3FFF when ROM_OVL_EN=1)", "Legacy /IORQ instructions (IN/OUT)", "HALT instruction", "External /BUSRQ assertion"]
-        safeguards:
-          - "Crossbar 74F245/74F125 drivers immediately tri-state (Hi-Z) when VIRT_EN=0"
-          - "4.7 kOhm pull-up resistors on /WE_L, /WE_H, /SWE_L, /SWE_H float all write strobes HIGH (write-locked) across mode transitions"
+      trigger: "VIRT_EN = NOR(/IORQ, /RFSH) impossible Z80 state re-roles 34/40 PDIP pins (6 fixed: CLK,/RESET,VCC,GND,/IORQ,/RFSH)"
+      dds_dram_14pin: "AD[7:0], A8, A9, /WE_L, /WE_H, WAIT_SAMPLED, CROSSBAR_ODD_EVEN (VDP-driven slot phase input); always-read default (/WE_L=1 & /WE_H=1) discarded by CPU if idle; /WE_L=0 or /WE_H=0 overrides to Early Write; linear up to 1MB"
+      sram_16bit_18pin: "SD[15:0], /SWE_L, /SWE_H (0.5T: Phi1 SA[15:0] -> 74ALS373 latch, Phi2 16b data; always-read / write-override; up to 64KB)"
+      interrupts_2pin: ["/INT", "/NMI"]
+      auto_disarm: "Disarms VIRT_EN=0 for EPROM (0x0000-3FFF), /IORQ, HALT, /BUSRQ; crossbar tri-states Hi-Z & 4.7k pull-ups write-lock strobes"
 
-    external_sram_1024b:
-      baseline_chips: "4x 2114-12 (512x16 = 1 KB) or 2x 6116-12 (2Kx16 = 4 KB), scalable to 64 KB"
-      address_latch: "1x 74ALS373 / 74F573 clocked by Phi1 edge"
-
-  bus_arbitration:
-    topology: "Odd-Even 2T ULA/CPU Crossbar (1T VDP turn + 1T CPU turn = 80 active turns/line each; VDP can burst-steal up to 160 turns/line in RGB332/RGB565 full-saturation modes while CPU runs from 16-bit SRAM)"
-    bank_exposure: "Single unified /RAS exposed by crossbar to active side (no /RAS0-/RAS1 split needed)"
-    crossbar_bom_5ic:
-      cpu_side_3ic:
-        - "1x 74F245 (octal bidir transceiver for AD[7:0]; DIR=A->B on Write & Q0..Q1 Read addr, B->A on Q2..Q3 Read data; /OE gated by CPU_TURN & VIRT_EN)"
-        - "1x 74F125 (or 74F244) quad tri-state buffer for A8, A9, /WE_L, /WE_H"
-        - "1x 74F02 quad NOR for VIRT_EN = NOR(/IORQ,/RFSH) & /XBAR_OE gating"
-      vdp_side_2ic:
-        - "1x 74F245 (octal bidir transceiver for VDP_AD[7:0])"
-        - "1x 74F125 (or 74F244) quad tri-state buffer for VDP_A8, VDP_A9, /VDP_WE_L, /VDP_WE_H"
-      propagation_delay_ns: "5 - 7 ns single wired-OR tri-state stage"
-
-  resig_bus_ctrl:
-    dram_spd_presets:
-      mode_0_fast: "1.0T (281.94 ns) for -15/-20 DRAM"
-      mode_1_salvage_25: "1.5T (422.91 ns, +2Q high-park) for -25 (250 ns) DRAM"
-      mode_2_slow_30: "2.0T (563.87 ns, +4Q high-park) for -30/-37 DRAM"
-      mode_3_contended: "2.0T - 3.0T via WAIT_SAMPLED / DATA_READY state-hold"
-    iorq_default_window: "5H (2.5T = 704.84 ns) active /IORQ strobe matching VZ80REMIX 15/1..18/1 trace; ULA MMIO uses 0 /IORQ ports (+0x7F0..7FB at 0.5T-1T)"
-
-  enclosure_bom:
-    dram_pcb:
-      glue_ics: "2x 74F543 bidirectional registered transceivers (DATA_L, DATA_H) + 33R series damping resistors"
-      evicted_ics: ["ADDR_BUF (74F244) evicted — motherboard crossbar 74F245 now buffers AD[7:0] directly across J1"]
-      j1_34pin_notes: "Single unified /RAS; LE_L, LE_H, /DDS_OE_L, /DDS_OE_H generated by Q0..Q3 phase decoder; pin 16 and pin 22 freed as spare/rsvd"
-
-  emulator_trace_ref:
-    source: "VZ80REMIX transistor-level NMOS Z80 simulator at 3.546895 MHz (half-T logs report settled state at end of each phase)"
-    key_findings:
-      - "Standard operand read takes 3.0T (6 half-Ts = 845.81 ns): AB valid at T1 rising (0 ns), /MREQ+/RD fall at T1 falling (140.97 ns), ULAT opens transparent DLATCH at T2 rising (281.94 ns), /WAIT sampled at T2 falling (422.91 ns), BUSRQ sampled & DLATCH closes at T3 rising (563.87 ns), reg=DLATCH at T3 falling (704.84 ns)"
-      - "HALT trace (2/0..4/1) proves ULAT/ULATO is a level-sensitive transparent pass-gate that resamples DB on every rising edge while UWAIT loops on /WAIT=0; HALT keeps SIGEXEC=0 and repeatedly grants BUSRQ/BUSAK until INT/NMI"
-      - "LD (nn),A quirk: UPCDWQ merges W = LBUS OR HBUS (A | F) at 5/1, and ULWA overwrites W = DLATCH (A) at 13/1, leaving WZ = (A<<8) | ((nn+1)&0xFF)"
-      - "LD A,(nn) leaves WZ = nn + 1 without W overwrite"
-      - "IN A,(n) runs 4.0T (1,127.8 ns) with 5H (/IORQ+/RD active 15/1..18/1) and leaves WZ = ((A<<8)|n) + 1"
-
-  opcode_risc_break:
-    primitives:
-      - "LD:W <dst>,(<src>:AO><inc>) : Drive <src>->AO, update <inc> (AL+ or PC+), initiate 1T read (2 half-Ts on DRAM, 0.5T on 0WS SRAM), sample WAIT; loading DL triggers PLA decode"
-      - "LD:WAIT <dst>,(<src>:AO><inc>) : Same read cycle with explicit WAIT pin sampling across capture half-T"
-      - "LD:DF:W <cond> DL,(<src>:AO><inc>) : Conditional early-cancel opcode fetch (Decode-Flush) when <cond> is true"
-      - "LD:W !OCC DL,(AO>PC) : Conditional early-cancel opcode fetch when branch/call condition OCC is false"
-      - "INCLD2 PC>AO+2 : ADDER adds +2 to PC into AO (skips 16-bit immediate nn)"
-      - "DECLD AA,<r> : Dual-nibble 8-bit decrement <r>-1 -> AA in 0.5T, updates Z flag"
-      - "DECLD1 SP-1>AO:AL : Internal 16-bit ADDER decrement SP-1 -> AO and AL in 0.5T"
-      - "DECLD1:W (AO-1>AL:SP),<r> : Write <r> to (AO) while ADDER decrements AO-1 -> AL and SP"
-      - "NOPLD:W (<addr>),<r> : Pure memory write to (<addr>) with no ADDER increment/decrement"
-      - "SADD LL,PCL>AA / SADD CY,PCH>AB : 2-step signed 8-bit relative offset addition using SIGN_EXT & CY"
-      - "LD:W WZH:LL,(AL:AO>PC+) : Loads high byte from memory into WZH while shifting LL -> WZL (WZ = nn)"
-
-    canonical_sequences:
-      djnz_rel:
-        opcode: "0x10"
-        timing_t: "3.0T (6 half-Ts) not-taken / 4.0T (8 half-Ts) taken at 3.546895 MHz"
-        half_t_columns:
-          - { col: 1, bus: "LD:W DL,(PC:AO:AL+)", alu: "-", note: "Primed: fetch 0x10" }
-          - { col: 2, bus: "(wait half-t if any)", alu: "decode DJNZ", note: "DL latched -> PLA decode" }
-          - { col: 3, bus: "LD:WAIT LL,(AL:AO:PC+)", alu: "DECLD AA,B", note: "Fetch +d into LL; B-1 -> AA (sets Z)" }
-          - { col: 4, bus: "(wait half-t if any)", alu: "LD B,AA", note: "LL latched; commit B" }
-          - { col: 5, bus: "LD:DF:W Z DL,(PC:AO:AL+)", alu: "SADD LL,PCL>AA", note: "If Z=1: early cancel & fetch next (3.0T); if Z=0: PCL+d -> AA" }
-          - { col: 6, bus: "-", alu: "SADD CY,PCH>AB", note: "PCH + SIGN_EXT + CY -> AB" }
-          - { col: 7, bus: "LD:W DL,(AB|AA:AO:PC+)", alu: "-", note: "Jump to AB:AA, PC=target+1, fetch next (4.0T)" }
-
-      call_cc_nn:
-        opcodes: ["0xC4", "0xCC", "0xD4", "0xDC", "0xE4", "0xEC", "0xF4", "0xFC"]
-        timing_t: "2.0T (4 half-Ts) early-cancel (!OCC) / 7.5T (15 half-Ts) taken"
-        half_t_columns:
-          - { col: 1, bus: "LD:W DL,(AL:AO>PC+)", note: "Primed with prior opcode" }
-          - { col: 2, bus: "(wait half-t if any)", note: "DL latched -> decode CALL cc,nn" }
-          - { col: 3, bus: "INCLD2 PC>AO+2", note: "Actual CALL cc start: AO = PC+2 (CALL+3)" }
+    opcode_risc_break:
+      principle: "Strict NMOS silicon datapath fidelity: 0 invented latches/ALU ops; half-T (0.5T) tabular decode"
+      latches:
+        adder_3latch: "16b ADDER complex: AO (addr-out AB[15:0]), AL (ripple output), APC (live PC)"
+        adder_cmds: "NOPLD, INCLD1, DECLD1, INCLD7, INCLD2, DECLD2; same-half-T fly-capture into AL & AO"
+        pad_latch_16b: "16b pad-ring latch LH:LL; DL loading directly triggers PLA decode"
+        alu_2stage: "Dual-nibble ALU w/ local PLA + AW/AW'/F/F'/FLG/AA/AB/AR + SIGN_EXT"
+        lr_reg_field: "Register Field PLA directly resolves LR as source/target operand"
+        fetch_guards: "LD:DF:W / LD:W !OCC DL,(AO>PC) early-cancels false branches/calls with 0 extra reads"
+        dram_cycler_bus: "Autonomous DDS DRAM cycler driving 8b full-mux AD[7:0] + A8/A9 into DRAM 2x 74F543 latches"
+      primitives:
+        - "LD:W <dst>,(<src>:AO><inc>) : Drive <src>->AO, update <inc>, 1T read (2 half-Ts DRAM / 0.5T SRAM), sample WAIT"
+        - "LD:WAIT <dst>,(<src>:AO><inc>) : Read cycle w/ explicit WAIT pin sampling across capture half-T"
+        - "LD:DF:W <cond> DL,(<src>:AO><inc>) : Conditional Decode-Flush early-cancel opcode fetch when <cond>=1"
+        - "LD:W !OCC DL,(AO>PC) : Early-cancel opcode fetch when condition OCC is false"
+        - "INCLD2 PC>AO+2 | DECLD AA,<r> | DECLD1 SP-1>AO:AL | DECLD1:W (AO-1>AL:SP),<r> | NOPLD:W (<addr>),<r>"
+        - "SADD LL,PCL>AA / SADD CY,PCH>AB | LD:W WZH:LL,(AL:AO>PC+)"
+      canonical_sequences:
+        djnz_rel: "0x10 (3.0T not-taken / 4.0T taken): [1] LD:W DL,(PC:AO:AL+) -> [2] (wait) -> [3] LD:WAIT LL,(AL:AO:PC+) | DECLD AA,B -> [4] (wait) | LD B,AA -> [5] LD:DF:W Z DL,(PC:AO:AL+) | SADD LL,PCL>AA -> [6] SADD CY,PCH>AB -> [7] LD:W DL,(AB|AA:AO:PC+)"
+        call_cc_nn: "0xC4..FC (2.0T !OCC early-cancel / 7.5T taken): [1] LD:W DL,(AL:AO>PC+) -> [2] (wait) -> [3] INCLD2 PC>AO+2 -> [4] LD:W !OCC DL,(AO>PC) -> [5] (wait) -> [6] LD:W LL,(PC:AO>AL+) -> [7] (wait) -> [8] LD:W WZH:LL,(AL:AO>PC+) -> [9] (wait) -> [10] DECLD1 SP-1>AO:AL -> [11] DECLD1:W (AO-1>AL:SP),PCH -> [12] (wait) -> [13] NOPLD:W (AL),PCL -> [14] (wait) -> [15] LD:W DL,(WZ:AO)"
+        jp_cc_nn: "FETCH2 OCC -> LD LL,n -> LD PC,n:LL"
+        jp_rr: "NOPLD RR:AO:APC"
+        push_rr: "LD (SP):AO:AL+,RR_H -> LD (AL):AO:SP+,RR_L"
+        pop_rr: "LD RR_L,(SP):AO:AL+ -> LD RR_H,(AL):AO:SP+"
 Используйте код с осторожностью.
-- { col: 4, bus: "LD:W !OCC DL,(AO>PC)", note: "If !OCC: early cancel, PC=CALL+3, fetch next opcode (2.0T exit)" }
-- { col: 5, bus: "(wait half-t if any)", note: "Wait for next DL if !OCC, else proceed" }
-- { col: 6, bus: "LD:W LL,(PC:AO>AL+)", note: "Get nn_lo into LL, AL=CALL+2" }
-- { col: 7, bus: "(wait half-t if any)", note: "LL latched" }
-- { col: 8, bus: "LD:W WZH:LL,(AL:AO>PC+)", note: "Get nn_hi into WZH, LL->WZL (WZ=nn), PC=CALL+3" }
-- { col: 9, bus: "(wait half-t if any)", note: "WZH latched" }
-- { col: 10, bus: "DECLD1 SP-1>AO:AL", note: "ADDER: AO = AL = SP-1" }
-- { col: 11, bus: "DECLD1:W (AO-1>AL:SP),PCH", note: "Push PCH to (SP-1); AL = SP = SP-2" }
-- { col: 12, bus: "(wait half-t if any)", note: "PCH write settle" }
-- { col: 13, bus: "NOPLD:W (AL),PCL", note: "Push PCL to (SP-2)" }
-- { col: 14, bus: "(wait half-t if any)", note: "PCL write settle" }
-- { col: 15, bus: "LD:W DL,(WZ:AO)", note: "Jump to WZ (nn) & fetch subroutine opcode" }
+jr_cc_rel: "FETCH1 OCC -> LD AA,n -> SADDLD AB,PCL -> SADDLDCARRY AA,PCH -> LD:DF APC:AO,AA:AB"
+rlc_idx_r: "LD AA,n -> SADDLD AB,IXL -> SADDLDCARRY AA,IXH -> LD WZ:AO,AA:AB -> LD LL,(WZ) -> RLCLD AR,LL -> LD (WZ),AR [+ LD R,AR]"
+block_loop_rep: "1-step loop-back via DECLD2 APC:AO:AL:APC"
+risc_main_page: # 256-slot active half of 512-op page (rows=low 0..F, cols=high 0..F; op=(col<<4)|row; gaps=---)
+col_0: "[NOP, LD LL,n, LD (AO):AL+,A, LD (AO):AL+,OR, LD PC,n:LL, LD A,(AO):AL+, LD A,(BC):AO:AL+, RLCALD A, EX AF,AF', IO RD,(BC):WZ+, ---, ---, ---, ---, ---, RRCALD A]"
+col_1: "[LD (BC):AO:AL+,A, LD (BC):AO:AL+,OR, LD (AO):AL+,OR_H, LD (ORR):AO,LL, LD ORR,n:LL, LD OR,(AO):AL+, LD A,(DE):AO:AL+, RLLD A, NOPLD ORR:AO:AL:ORR, IO WR,(BC):WZ+, ---, ---, ---, ---, ---, RRLD A]"
+col_2: "[LD (DE):AO:AL+,A, LD (DE):AO:AL+,OR, LD (AO):AL+,OR_L, LD OR,LL, LD WZ,n:LL, LD OR_L,(AO):AL+, LD (AO):AL+,n, DAALD A, DECLD1 BC.PV, IO RD,(A:n):WZ+, ---, ---, ---, ---, ---, CPLLD A]"
+col_3: "[INCLD1 ORR:AO:AL:ORR, DECLD1 ORR:AO:AL:ORR, INCLD2 APC:AO:AL:APC, DECLD2 APC:AO:AL:APC, INCLD1 WZ:AO:AL:WZ, DECLD1 WZ:AO:AL:WZ, LD AA,A, SCF, ---, IO WR,(A:n):WZ+, ---, ---, ---, ---, ---, CCF]"
+col_4: "[LD B,LL, LD B,C, LD B,D, LD B,E, LD B,H, LD B,L, LD B,LR, LD B,A, LD C,B, LD C,LL, LD C,D, LD C,E, LD C,H, LD C,L, LD C,LR, LD C,A]"
+col_5: "[LD D,B, LD D,C, LD D,LL, LD D,E, LD D,H, LD D,L, LD D,LR, LD D,A, LD E,B, LD E,C, LD E,D, LD E,LL, LD E,H, LD E,L, LD E,LR, LD E,A]"
+col_6: "[LD H,B, LD H,C, LD H,D, LD H,E, LD H,LL, LD H,L, LD H,LR, LD H,A, LD L,B, LD L,C, LD L,D, LD L,E, LD L,H, LD L,LL, LD L,LR, LD L,A]"
+col_7: "[LDAO LL,(BC), LDAO LL,(DE), LDAO LL,(HL), LDAO LL,(AW), LDAO LL,(IX), LDAO LL,(IY), ---, ---, LD A,B, LD A,C, LD A,D, LD A,E, LD A,H, LD A,L, LD A,LR, LD A,LL]"
+col_8: "[ADDLD A,OR, ADDLD A,(HL), ADDLD A,n, RLCLD AA, SLALD AA, BITLD OB,AA, RLDLD AA, LD AL,SP, ADCLD A,OR, ADCLD A,(HL), ADCLD A,n, ---, ---, ---, ---, ---]"
+col_9: "[SUBLD A,OR, SUBLD A,(HL), SUBLD A,n, RRCLD AA, SRALD AA, RESLD OB,AA, RRDLD AA, LD AA,(AO):AL+, SBCLD A,OR, SBCLD A,(HL), SBCLD A,n, ---, ---, ---, ---, ---]"
+col_A: "[ANDLD A,OR, ANDLD A,(HL), ANDLD A,n, RLLD AA, SLLLD AA, SETLD OB,AA, NIBREV AA, LD AB,(AO):AL+, XORLD A,OR, XORLD A,(HL), XORLD A,n, ---, ---, ---, ---, ---]"
+col_B: "[ORLD A,OR, ORLD A,(HL), ORLD A,n, RRLD AA, SRLLD AA, NEGLD A, NIBREV AR, ---, CPLD A,OR, CPLD A,(HL), CPLD A,n, ---, ---, ---, ---, ---]"
+col_C: "[FETCH2 OCC, FETCH1 OCC, FETCH0 OCC, LD Z,(SP):AO:AL+, LD W,(AL):AO:SP+, SADDLD AB,IXL, SADDLD AB,IYL, SYS IFF1=0, LD AA,0, ---, ---, ---, ---, ---, ---, ---]"
+col_D: "[LD (SP):AO:AL+,OR_H, LD (AL):AO:SP+,OR_L, LD OR_L,(SP):AO:AL+, LD OR_H,(AL):AO:SP+, LD AA,n, SADDLDCARRY AA,IXH, SADDLDCARRY AA,IYH, SYS IFF1=1, LD AB,RST_VEC, ---, ---, ---, ---, ---, ---, ---]"
+col_E: "[LD (SP):AO:AL+,PCH, LD (SP):AO:AL+,PCL, LD (AL):AO:AL+,H, LD (AL):AO:AL+,L, SADDLD AB,PCL, SADDLDCARRY AA,PCH, LD:DF APC:AO,AA:AB, SYS IFF1=IFF2, LD AB,0x66, ---, ---, EX DE,HL, ---, ---, ---, ---]"
+col_F: "[LD WZ:AO,AA:AB, NOPLD WZ:AO:AL:APC, NOPLD WZ:AO:AL:HL, DI, LD WZ:AO,LH:LL, NOPLD HL:AO:AL:SP, LD APC:AO,WZ, SYS IM=0/1/2, LD WZ:AO,0x0066, ---, ---, EI, ---, ---, ---, ---]"
+emulator_trace_ref:
+source: "Locality/NMOS & VZ80REMIX transistor-level NMOS Z80 simulator (3.546895MHz half-T settled logs)"
+key_findings:
+- "Standard operand read = 3.0T (845.81ns): ULAT opens transparent DLATCH at T2 rising (281.94ns), /WAIT sampled at T2 falling (422.91ns), DLATCH closes at T3 rising (563.87ns)"
+- "HALT trace (2/0..4/1) proves ULAT/ULATO is a level-sensitive transparent pass-gate resampling DB on every rising edge while UWAIT loops on /WAIT=0; SIGEXEC=0 & BUSRQ/BUSAK granted until INT/NMI"
+- "ADDER=input/addr-out latch (ADDR=ADDER on x/0), ADDES=ripple output latch (NOPLD/INCLD/DECLD/INCLD7 on x/0, reg commit on x/1)"
+- "LD (nn),A merges W = A | F at 5/1 (UPCDWQ), overwrites W = A at 13/1 (ULWA), leaving WZ=(A<<8)|((nn+1)&0xFF); LD A,(nn) leaves WZ=nn+1; IN A,(n) uses 5H /IORQ (15/1..18/1) & leaves WZ=((A<<8)|n)+1"
+- "CALL cc,nn late-tests cc at 12/1 wasting 13/0..14/1 on false cc (replaced by 2.0T !OCC early-cancel in ISA-1)"
+- "ADD/ADC/SBC HL,RR runs 2x 8b ALU passes & writes WZ=HL+1; RLD/RRD uses NIBB-REV-BUS; IM0/1/2 & NMI suppress PC inc via NOPLD"
+isa1_microarch:
+pipeline: "3-stage R800-style pipeline + 16b prefetch buffer; 4b sliced ALU (16b in 2T, 32b in 4T, 16x16->32 MUL ~16T & 32/16->16 DIV ~16-20T); distributed Phi1/PHI2 6T latches at D[7:0] pad ring"
+bus_dual_pc: "dram_pc (1MB linear ext bus via DDS full-mux AD[7:0]+A8/A9); sram_pc (0WS 16b Local SRAM/opcache); V = 0WS SRAM window ptr; XJP n / XJP (V) / XRET"
+dds_bus_timing:
+master_clock: "14.18758 MHz PAL crystal (1Q=70.48ns, 0.5Q=35.24ns, 1H=140.97ns, 1T=281.94ns)"
+read_1T: "Q0..Q2 (211.45ns) parallel 16b DRAM fetch into 2x 74F543 (DATA_L/H) -> Q3 (70.48ns) DDS_L (35.24ns) + DDS_H (35.24ns) on AD[7:0]"
+write_1T: "Q0 (70.48ns) DDS_L + DDS_H -> Q1..Q3 (211.45ns) ROW/COL + Early Write (/WE_L/H before /CAS)"
+write_to_read_guard: "1H (140.97ns) t_RP precharge between consecutive Write->Read cycles"
+resig_bus_ctrl:
+spec: "v2.0 Autonomous 8-Mode Memory, Bus & RESIG Interface; DRAM_SPD modes: 0=1.0T (-15/-20), 1=1.5T (+2Q high-park for -25), 2=2.0T (+4Q for -30/-37), 3=2.0-3.0T WAIT_SAMPLED; /IORQ window=5H (2.5T)"
+cfg_regs: "CFG_SEL 00=CFG_MODE_CTRL | 01=CFG_DMA_PACE | 10=CFG_ROM_SEG (ROM_OVL_EN=1 auto-disarms VIRT_EN)"
+eff_modes: "0:IO(5H) | 1:Z80/ROM | 2:8b_Mux_DRAM | 3:24A/16D_Mux | 4:16A/16D_Lin | 5:16b_Mux_DRAM(unified /CAS + /WE_L,/WE_H) | 6:4b_SRAM_2114(2H nib) | 7:Fast_8b_SRAM(1H)"
+opcache_capture: "OP_START, OP_LEN, OP_CUR latches; CATCH streams fetched opcodes to SRAM[OP_CUR++]; END captures trailing branch then halts"
+loop_accel: "IR/DR, IRLR/DRLR, IRNZ/DRNZ fused w/ Tier-1 ACT_CC"
+e_carry: "16b carry/bitfield shift-buffer CY[15:0] (CY==F.C); BEX n binds CY as LR"
+dialect: "sjasmplus (standard Zilog mnemonics + ISA-1 pfxs; 0x hex, 0b binary)"
+z80_baseline: "Vanilla Z80 baseline assumed NMOS w/ undocumented opcodes/flags documented"
+virtual_ops:
+- "CALL_INT_M2 n | CALL NMI | XLAT LR,A | BSWAP/EZX/ESX/LTOH/HTOL/LLZX/LLSX/MIRR LR | FIND0/FIND1 LR,A"
+- "LD A,LR / LD LR,A / INC LR / DEC LR / LD LR,n / LD LR,nn / JP (LR)"
+- "STACK_DEPTH n / STACK_FLUSH / STACK_FETCH | BEX n / PEX LR,n | SET_OP_CUR n / CATCH / END"
+regs_banks:
+banks: "4 banks EXX0..3 (0xCA/DA/EA/FA); per-bank {AW,BC,DE,HL,IX,IY,SP,V,F} evicted to 0WS 16b SRAM"
+link_reg: "LR (16b internal link/scratch reg: LR0=lo, LR1=hi)"
+last_reg_2: "LAST_REGISTER_2 (LR2): arises ONLY via MEM*+MEM* mixture or EXTEND (V) pfx"
+sp_binding: "All stack ops bind permanently to EXX0.SP in SRAM"
+m1_pipeline:
+model: "Stateless M1 pfx latch loop + 8x16b MEM[0..7] macro latches; esc pgs: 0x27=LRPAGE, 0x2F=BITPAGE, 0x3F=BITPAGE$"
+tiers: "T1: ACT_CC (0x88..8F) -> T2: REP0..7 (0x98..9F, 9b SHL3) -> T3: fusable MEM[0..7] & modifier stream"
+cc8_fixed: "Fixed non-programmable ACT_CC[0..7] = CC8 [NZ,Z,NC,C,PO,PE,P,M]"
+rr_shift: "MEM[0..7] replays stored 16b latch; terminal MEMx preceded by >=1 non-MEM* pfx fuses & memorizes 16b state"
+shadow_gather: "MEM[0..7] default RR mutation mapped 1:1 to RR8[0..7] (boot SSDEF: AW:L1,BC:R1,DE:X1,HL:XC,IX:L2,IY:R2,SP:X2,V:XC)"
+width_rev: "Vanilla widths default; WORD promotes to 16b; WBZ/WBS/WB$/WB$$; REV (0x37) swaps LEFT<->RIGHT"
+word_mutation_rules:
+root_word: "WORD (0x33): promotes LEFT, RIGHT, DEST to 16b; A/AF->AW; LEFT RRH->RR', RIGHT RRH->RR; 0x76->LD (HL),(DE); 0xC9->RETI; 0xF3->RLD; 0xFB->RRD"
+wordrev: "WORDREV (0x37): root_word + REV swap; RIGHT AW->AW'; LEFT nn->(nn); 0xC9->RETN; 6 --- slots"
+wordlr: "WORDLR (0x3B): root_word + LEFT RRL->LR, RIGHT RRH->LR, SP->LR"
+wordlrrev: "WORDLRREV (0x3F): wordlr + post-apply REV swap"
+sticky_rr: "Triggered exclusively by virtual STICK pfx until new MEMy or MODE_"
+virtual_pfxs: "STICK | MEMDEF | WB$$ | DEST_LR | EXTEND nn | EXTEND (V) | SATU | SATS"
+am_rr_modes: "?[fut] evicted for future task (3b per-reg latch via AM n/LR on LRPAGE)"
+ss_rr_modes: "6b per-reg latch via SS n on LRPAGE; 0x27 0xD9=SSDEF"
+zx48k_platform:
+target: "Custom 1981-83 PAL50 ZX-Class Computer (Single ISA-1 BOM $38.27-$56.70 -> Retail $115-$165; Dual w/ Z80A Slave BOM $41.77-$61.70 -> Retail $123-$175)"
+bus_arbitration:
+topology: "Odd-Even 2T ULA/CPU Crossbar (1T VDP + 1T CPU = 80 active turns/line each; VDP burst-steal up to 160 turns/line in RGB332/RGB565); single unified /RAS exposed to active side; VDP drives CROSSBAR_ODD_EVEN directly"
+crossbar_bom_5ic: "CPU-side 3 ICs (1x 74F245 AD[7:0] + 1x 74F125 A8/A9//WE_L//WE_H + 1x 74F02 VIRT_EN/OE) + VDP-side 2 ICs (1x 74F245 + 1x 74F125); 5-7ns delay; +$4.15..+$6.60 gross retail bump"
+legacy_slave: "Symmetric FCFS /WAIT arbiter w/ LAST_WINNER FF; BYTE_MODE=1 steers A0; Master=/INT, Slave=/NMI"
+ula_mmio: "0 /IORQ ports; MMIO +0x7F0..7F7 KBD, +0x7F8 ULA_CFG, +0x7F9 BEEPER_MIC, +0x7FA EAR_IN, +0x7FB SYS_STATUS"
+memory_map: "0x0000-3FFF Mask ROM/2x2764 + 16KB shadow RAM | 0x4000 VDP FONT_BASE + coupled [CHAR,ATTR] words (or contended RAM) | 0x8000+ User RAM (64KB default, up to 1MB linear); DRAMs: 4116..41256, 4416..44256, KR565RU3..7"
 VDP_section:
 hardware_architecture:
-ula_silicon: "Dedicated Ferranti 5C/6C ULA (~1,140 gates used of ~1,200-1,400; legacy 0xFE I/O, tape EAR/MIC, and bit-scrambled bitmap logic removed)"
+ula_silicon: "Dedicated Ferranti 5C/6C ULA (~1,140 gates used of ~1,200-1,400; legacy 0xFE I/O, tape EAR/MIC, and scrambled bitmap logic removed)"
 package: "40-pin PDIP (13p DDS crossbar + 6p 2114 Index SRAM + 9p RGB332/CSYNC + 4p clk/pwr/rst + 8p spare/MMIO/coder ctrl)"
 video_output: "8-bit RGB332 (R[2:0], G[2:0], B[1:0] resistor DAC) + /CSYNC + BURST_DIS feeding external TEA2000 / MC1377 PAL TV-coder & RGB SCART"
 ula_index_sram:
-chip: "1x 2114-12 (1024x4, 120 ns) quad-series nibble SRAM (6 ULA pins: ULA_SD[3:0], ULA_LE_SA, /ULA_SRAM_WE)"
-timing: "0.5T (140.97 ns) per nibble = 2T per 16-bit CHAR_CODE; pre-reads 40x 16-bit indices (160 nibbles = 40T) inside a single 42.5T H-blank at Y_FIELD=7, eliminating repeated index fetches across scanlines 0..7"
+chip: "1x 2114-12 (1024x4, 120ns) quad-series nibble SRAM (6 ULA pins: ULA_SD[3:0], ULA_LE_SA, /ULA_SRAM_WE)"
+timing: "0.5T (140.97ns) per nibble = 2T per 16b CHAR_CODE; pre-reads 40x 16b indices (160 nibbles = 40T) inside a single 42.5T H-blank at Y_FIELD=7"
 display_geometry:
 active_safe_area: "320 x 240p (or 320 x 480i interlaced)"
-borders_pal: "24 px left/right (3.42 us each) + 24 lines top/bottom inside 368 x 288 visible PAL raster (total CRT overscan protection; consumer TVs lack user horizontal squeeze)"
-pixel_aspect_ratio: "1.042 : 1 at 7.09379 MHz (within 4.2% of mathematical 1:1 square pixels)"
-tv_chroma_trap_rule: "320 px (7.09379 MHz -> 3.55 MHz max stripe) sits safely below the 4.43361875 MHz PAL chroma trap; 640 px modes (14.18758 MHz) use RGB SCART or BURST_DIS chroma-trap bypass"
-dds_bandwidth_per_line: "80 active VDP turns x 2B = 160 bytes/line (38,400 B/frame contention-free), or up to 160 turns = 320 bytes/line in full-saturation RGB332/RGB565 modes"
+borders_pal: "24px L/R (3.42us each) + 24 lines T/B inside 368x288 visible PAL raster (total CRT overscan safety; consumer TVs lack horizontal width knobs)"
+pixel_aspect_ratio: "1.042:1 at 7.09379MHz (within 4.2% of 1:1 square)"
+tv_chroma_trap_rule: "320px (7.09379MHz -> 3.55MHz max stripe) stays safely below 4.43361875MHz PAL chroma trap; 640px modes (14.18758MHz) use RGB SCART or BURST_DIS"
+dds_bandwidth_per_line: "80 active VDP turns x 2B = 160 B/line (38,400 B/frame contention-free), or 160 turns = 320 B/line full-saturation"
 memory_layout:
-font_base_default: "0x4000 (16384) — pure A14=1 wire-concatenation (zero adder gates); 0x0000-0x3FFF left free for CPU RAM/system vars"
-coupled_text_words: "Immediately follows FONT_BASE (0x4800 / 0x5000 / 0x6000); 16-bit word packs DATA_L = CHAR_CODE[7:0] and DATA_H = ATTR[7:0] in a single 1T DDS fetch"
-alt_zero_base_skew: "TEXT_BASE = 0x0000 (VSYNC counter clear) with +128 (0x1000) / +256 (0x2000) upper-byte CHAR_CODE skew up to 1 MB linear DRAM ceiling"
+font_base_default: "0x4000 (16384) — pure A14=1 wire-concatenation (0 adder gates); 0x0000-0x3FFF free for CPU RAM/vars"
+coupled_text_words: "Immediately follows FONT_BASE (0x4800/0x5000/0x6000); 16b word packs DATA_L=CHAR[7:0] & DATA_H=ATTR[7:0] in 1 DDS fetch"
+alt_zero_base_skew: "TEXT_BASE=0x0000 (VSYNC clear) w/ +128 (0x1000) / +256 (0x2000) upper-byte CHAR skew up to 1MB linear DRAM"
 interlace_indexing: "FIELD_ODD toggle drives glyph row parity (Even field = rows 0,2,4..14; Odd field = rows 1,3,5..15)"
 modes:
-mode_0_8x8i_text: "80x60 (640x480i) or 40x60 (320x480i), 8-bit CHAR (0..255) + 8-bit ATTR coupled word, 2 KB font at 0x4000"
-mode_1a_8x16i_text: "80x30 (640x480i) or 40x30 (320x480i), 8-bit CHAR (0..255) + 8-bit ATTR coupled word, 4 KB font at 0x4000 (4,800B screen buffer)"
-mode_1b_16x16i_text: "20x30 (320x480i), 16-bit CHAR (up to 32,512 glyphs in 1 MB) + 16-bit ATTR + 16-bit GLYPH in 3 DDS turns + 1 free turn/cell"
-mode_2_raw_640x480i_bitmap: "On-the-fly 0..4799 cell counter (80x60 8x8i cells): 4,800B linear ATTR at 0x0000 + 38,400B linear 640x480i bitmap at 0x12C0 (ZX 6912-style attribute clash, zero CPU tile shifts, endless modulo-4800 wrap-around)"
-mode_3_8x2bpp_lrgb4: "320x480i (8 x 2 BPP = 16 bits/word) with ATTR[15:0] = 4 x 4-bit LRGB ([C3, C2, C1, C0] selected by 2-bit pixel P[1:0]) for 4-color cells or 4-step luma anti-aliased text"
-mode_4_direct_4bit_lrgb: "Direct 4-bit LRGB (16 colors/px, zero attributes): 320x480i (75 KB, 80 turns/line contention-free) or 640x480i (150 KB, 160 turns/line full saturation)"
-mode_5_direct_rgb332: "Direct RGB332 (256 colors/px, 2 pixels per 16-bit DDS word): 320x480i linear bitmap (150 KB, 160 turns/line) or 40x30 8x16i / 20x30 16x16i 256-color tiles"
-mode_6_direct_rgb565: "Direct RGB565 (65,536 colors/px, 1 pixel per DDS word): 140x480i / 160x480i via 1 CHAR_16 + 7/8 RGB565 reads per cell"
+mode_0_8x8i_text: "80x60 (640x480i) or 40x60 (320x480i), 8b CHAR (0..255) + 8b ATTR coupled word, 2KB font at 0x4000"
+mode_1a_8x16i_text: "80x30 (640x480i) or 40x30 (320x480i), 8b CHAR (0..255) + 8b ATTR coupled word, 4KB font at 0x4000 (4,800B screen)"
+mode_1b_16x16i_text: "20x30 (320x480i), 16b CHAR (up to 32,512 glyphs in 1MB) + 16b ATTR + 16b GLYPH in 3 DDS turns + 1 free turn/cell"
+mode_2_raw_640x480i_bitmap: "On-the-fly 0..4799 counter (80x60 8x8i): 4,800B linear ATTR at 0x0000 + 38,400B linear 640x480i bitmap at 0x12C0 (ZX 6912-style clash, 0 CPU shifts, endless modulo-4800 wrap)"
+mode_3_8x2bpp_lrgb4: "320x480i (8x2BPP = 16b/word) w/ ATTR[15:0] = 4x 4b LRGB ([C3,C2,C1,C0] selected by P[1:0]) for 4-color cells or 4-step luma AA text"
+mode_4_direct_4bit_lrgb: "Direct 4b LRGB (16 colors/px, 0 attrs): 320x480i (75KB, 80 turns/line) or 640x480i (150KB, 160 turns/line)"
+mode_5_direct_rgb332: "Direct RGB332 (256 colors/px, 2 px/DDS word): 320x480i linear bitmap (150KB, 160 turns/line) or 40x30 8x16i / 20x30 16x16i tiles"
+mode_6_direct_rgb565: "Direct RGB565 (65,536 colors/px, 1 px/DDS word): 140x480i / 160x480i via 1 CHAR_16 + 7/8 RGB565 reads/cell"
+enclosure_bom:
+case_and_floorplan: "Widened wedge (~355-370 x 155 x 30 mm), single-plane 3-board coplanar array (~2mm hairline seams)"
+motherboard: "~285 x 85 mm (ULA left, ISA-1 center, optional Z80A Slave right; perimeter-flush J1 34p DRAM & J3 34p EPROM)"
+dram_pcb: "155 x 62 mm bottom-left SS dense; 32 DIP-16 (or 4 DIP-18 Rev-B) + 2x 74F543 bidirectional registered transceivers (DATA_L, DATA_H) + 33R damping (ADDR_BUF evicted — motherboard crossbar 74F245 buffers AD[7:0] directly across J1); Rev-0 (4116/4108), Rev-A (4516/4532/4164/41256 32KB..1MB), Rev-B (4x 4416/4464/44256)"
+eprom_pcb: "~125 x 62 mm bottom-right coplanar bay via J3 34p perimeter-flush connector (4-8x 28p JEDEC 2764/27128/27256)"
+j1_dram_34pin: "2x17 (2.54mm) perimeter-flush; Power: +5V(2,14), +12V(31), -5V(33); 10x GND(1,5,9,13,17,21,25,29,32,34); Signals: 3..12:AD[0..7], 15:/RAS (unified), 16:rsvd, 18:/CAS, 19:/WE_L, 20:/WE_H, 22:rsvd, 23:LE_L, 24:LE_H, 26:/DDS_OE_L, 27:/DDS_OE_H, 28:A8, 30:A9"
+derived_pgs:
+pg1: { base: pg0, recon: "rewrite all non-! operand tokens {(HL),(nn),nn} -> (V) [0x21 & 0x2A both -> LD HL,(V)]" }
+pg2: { base: pg0, recon: "alias pg0 with 16-bit word operand promotion" }
+pg3: { base: pg1, recon: "alias pg1 with 16-bit word operand promotion" }
+rr_pgs:
+base: pg0
+evict_to_free: "0x88..8F (ACT_CC), 0x98..9F (REP0..7), 0xCA/DA/EA/FA (EXX0..3) -> 20 FREE (---) slots"
+populate_slots: "0xB4..B7 (MODE_*) -> [AWL1R, BCR1R, DEX1R, HLXCR]"
+restore_block: "0x40..7F restores full LD R8[x],R8[y] EXCEPT 8 diagonal MEM[0..7] pfxs (01xxx_xxx)"
+mut_operands:
+- "Full unconditional mutation: all HL->RR, H->HALF_RR[RR].hi, L->HALF_RR[RR].lo, & (HL)->(RR+) in active EXX (obeys AM)"
+- "SP -> RR EXCEPT 0xE3 (EX (SP),RR) & 0xF9 (LD SP,RR) (!immune, anchored to EXX0.SP); if id!=6: (SP) in LDI/LDD -> (RR+)"
+- "ALU ops display explicit left A"
+mut_branches:
+- "Even id (0,2,4,6): CC4 -> CC_EVEN [PO,PE,P,M], 0xC9 -> RETN; Odd id (1,3,5,7): CC4 -> [NZ,Z,NC,C], 0xC9 -> RETI"
+- "Pair 0 (0,1): JP/CALL=nn, JR/LOOP=e | Pair 1 (2,3): all=dd | Pair 2 (4,5): all=(V) | Pair 3 (6,7): all=rel(V)"
+esc_pgs:
+lrpage_0x27:
+0xB4..0xB8: "[PUSH n, POP n, VSAVE n, BINTR, X2200]"
+0xB9..0xC0: "AM<RR8[0..7]> n"
+0xC1..0xC8: "AM<RR8[0..7]> LR"
+0xC9..0xD0: "LD A,AM<RR8[0..7]>"
+0xD1..0xD8: "SS<RR8[0..7]> n"
+0xD9: "SSDEF"
+0xDA..0xE1: "LD A,SS<RR8[0..7]>"
+bitpage_0x2F:
+00000xxx: "RLC R8[x] (with (HL)->(RR+))"
+00001xxx: "RRC R8[x] (with (HL)->(RR+))"
+00010xxx: "SHLC R8[x] (with (HL)->(RR+))"
+00011xxx: "SHRC R8[x] (with (HL)->(RR+))"
+00100xxx: "SHLZ R8[x] (with (HL)->(RR+))"
+00101xxx: "SHRZ R8[x] (with (HL)->(RR+))"
+00110xxx: "SHR7 R8[x] (with (HL)->(RR+))"
+00111xxx: "FREE"
+01bbbxxx: "BIT bbb,R8[x] (with (HL)->(RR+))"
+10bbbxxx: "RES/BTR bbb,R8[x] (with (HL)->(RR+))"
+11bbbxxx: "SET/BTS bbb,R8[x] (with (HL)->(RR+))"
+bitpage_dollar_0x3F: "identical to 0x2F with forced +d signed 8-bit displacement"
+pg0: # MODE_Z (canonical root; 164 active, 92 FREE)
+00xx0001: "LD RR4[x],nn"
+000x0010: "LD [(BC),(DE)],A"
+001x0010: "LD (nn),[HL,A]"
+00xx0011: "[INC BC,INC DE,INC HL,WORD]"
+00xxx10x: "[INC,DEC] R8[x]"
+00xxx110: "LD R8[x],n"
+00xxx111: "[RLC,RRC,RL,RR] LR ! | 0x37=WORDREV, 0x3F=WORDLRREV"
+00xx1001: "ADD HL,RR4[x]"
+000x1010: "LD A,[(BC),(DE)]"
+001x1010: "LD [HL,A],(nn)"
+00xx1011: "[DEC BC,DEC DE,DEC HL,WORDLR]"
+01xxxyyy: "LD R8[x],R8[y]"
+01110110: "LD (HL),(DE) !"
+01111111: "LD LR,0 !"
+10000xxx: "ADD A,R8[x]"
+10010xxx: "SUB R8[x]"
+10100xxx: "AND R8[x]"
+10101xxx: "SETLR SETLR_RR[x] !"
+10111xxx: "CP R8[x]"
+11xx0000: "SETLR SETLR_IND[x] !"
+11xx0001: "[POP BC,POP DE,POP HL,POP LR]"
+11000011: "JP nn"
+11xx0100: "SETLR SETLR_IDX[x] !"
+11xx0101: "[PUSH BC,PUSH DE,PUSH HL,PUSH LR]"
+11xx0110: "[ADD A,,SUB ,AND ,OR ]n"
+11xxx111: "[ADD,ADC,SUB,SBC,AND,XOR,OR,CP] A,LR !"
+11001001: "RET"
+11001101: "CALL nn"
+11xx1110: "[ADC A,,SBC ,XOR ,CP ]n"
+FREE: "0x00,0x08,0x10,0x18,0x20,0x27,0x28,0x2F,0x30,0x38,0x40,0x41,0x43,0x45,0x48..0x4A,0x4C,0x51..0x53,0x55,0x58,0x5A..0x5C,0x61,0x63..0x65,0x68..0x6A,0x6C,0x6D,0x88..0x9F,0xB0..0xB7,0xC2,0xC8,0xCA..0xCC,0xD2,0xD3,0xD8..0xDB,0xE2,0xE3,0xE8..0xEB,0xF2,0xF3,0xF8..0xFD"
+unbound_assumptions_fut_check:
+- "mode_v_word_interaction: clarify whether pg1 MODE_V {(HL),(nn),nn}->(V) applies over WORD* (0x33/37/3B/3F) or if WORD* suppresses (V)"
+- "slot_collision_0x37_0x3F: binding WORDREV=0x37 & WORDLRREV=0x3F on pg0 collides w/ legacy REV (0x37) & BITPAGE$ (0x3F)"
+- "vanilla_root_vs_pg0_evicted: confirm WORD* always decodes over full vanilla Z80 root regardless of pg0 FREE evictions"
+- "wordlr_reti_retn_lr: confirm 0xC9 under WORDLR/WORDLRREV is RETI(LR)/RETN(LR) vs plain RET(LR)"
+- "word_family_mem_fusion: decide if WORDLR/WORDLRREV fuse into 16b MEM[0..7] latches & STICK"
+fut_discovery: "tri_op_3_operand_alu: when k>=2 RR pfxs stream in M1, pair penultimate latch rr_prev w/ rr_curr on 16b ALU/mem-mem ops"
 future_tasks:
-- "Rewrite JP cc,nn, JR cc,e, RET cc, PUSH rr, POP rr, LD (nn),A, and LD A,(nn) in opcode_risc_break using !OCC / INCLD2 / WZH:LL / NOPLD:W half-T notation"
-- "Map the 7-8 spare ULA pins for direct CPU MMIO register writes (VDP_MODE, H_SCROLL, V_SCROLL, BORDER, BURST_DIS)"
-- "Resolve risc_main_page_slot_rebalance (verify 0x08/0x18/0x29/0x39 IO RD/WR & LDAO_LL slots)"
+- "half_t_risc_seq_expansion: rewrite JP cc,nn, JR cc,e, RET cc, PUSH rr, POP rr, LD (nn),A, & LD A,(nn) using !OCC/INCLD2/WZH:LL/NOPLD:W half-T primitives"
+- "ula_spare_pin_mmio_map: define exact register map for 8 spare ULA pins (VDP_MODE, H_SCROLL, V_SCROLL, BORDER, BURST_DIS)"
+- "pal_subcarrier_gen: finalize 4.43361875MHz PAL colorburst generation/lock for TEA2000/MC1377 alongside 14.18758MHz crystal"
+- "distributed_pla_split: partition monolithic Z80 PLA into cooperating sub-PLAs (~2,800-3,100 core FETs saved in ~14mm2 PDIP-40 NMOS die)"
+- "quarter_t_inter_pla_signaling: evaluate internal 0.25T (Q0..Q3) inter-PLA signaling + weak depletion keepers for +70C & /WAIT safety"
+- "free_wheeling_commit_discipline: combinational datapaths churn continuously until explicit Q3/Phi2 COMMIT strobes fire"
+- "decoupled_front_end_cracker_16b: autonomous 16b sliding-window Front-End fetch/prefix cracker w/ hidden M1 absorption & late quick_skip"
+- "autonomous_0ws_sram_cycler: 0.5T SRAM Access Cycler w/ local AW[0..3]/EF[0..3] in ALU & 8-wire F_BUS"
+- "interlock_only_dram_stall: 1-entry PENDING_DST load scoreboard + 1-entry posted DRAM_WR_BUF"
+- "pdip40_pin_drive_thermals: keep ~2-3.2mA drive on off-chip pins (<1W at +70C); boost only local 0WS SD[15:0] (~4mA)"
+- "dram_cycler_bus_topology: resolve unified internal bus vs dedicated point-to-point links for DDS DRAM cycler & ADDER"
+- "risc_main_page_slot_rebalance: reassign 16 evicted/migrated opcodes from cols 4..7 into open FREE slots on risc_main_page"
+- "ldao_ll_remaining_rr_slots: allocate 2 remaining --- slots in risc_main_page col 7 (0x76, 0x77)"
+- "alures_2stage_alu_pipeline: formalize hazard rules for 2-stage ALU pipeline vs 1-step SCF/CCF/LD R,R/LL/LR"
+- "j3_eprom_connector_pinout: define exact pinout for J3 34p EPROM connector w/ NE555 VPP programming rail"
+- "fcfs_arbiter_74ls_schematic: draw gate-level 74LS schematic for symmetric FCFS + LAST_WINNER /WAIT arbiter"
+- "rev_b_1985_private_cpu_ram: optional Rev-B motherboard enhancement adding private 16KB local RAM per CPU"
 HANDOFF_EOF
-
-<FollowUp>
-Would you like to:
-* Rewrite **`JP cc,nn`**, **`JR cc,e`**, **`RET cc`**, **`PUSH rr`**, and **`POP rr`** using the `!OCC` / `INCLD2` / `WZH:LL` / `NOPLD:W` half-T primitives and export as Excel TSV
-* Define the **exact register bit-map for the spare ULA MMIO pins** (`VDP_MODE`, `H_SCROLL`, `V_SCROLL`, `BORDER`, `BURST_DIS`)
-* Resolve **`risc_main_page_slot_rebalance`** (`0x08`, `0x18`, `0x29`, `0x39` slots)
-</FollowUp>
