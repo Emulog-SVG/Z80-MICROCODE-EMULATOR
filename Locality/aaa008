@@ -1,0 +1,164 @@
+yaml
+# ISA-1 / ZX48K Microarchitecture & Hardware Handover Specification
+# Exported: 2026-11-26 | Session Inputs: 45
+# Process Target: 1981-1983 2.0-2.5 um NMOS-II / HMOS-II (L_eff ~ 1.5-2.0 um), PDIP-40 (<1.0W @ 70C)
+
+isa_state:
+  name: "ISA-1 Hybrid Z80-Compatible Core & ZX48K Platform"
+  process_node:
+    tech: "2.0-2.5 um NMOS-II / HMOS-II (depletion-load + enhancement pass-transistors)"
+    l_eff: "1.5-2.0 um"
+    intrinsic_gate_delay: "0.4-1.0 ns"
+    local_latch_settle_25c: "4-8 ns (latch-to-latch), 8-12 ns (6T reg cell)"
+    local_latch_settle_70c: "10-14 ns (latch-to-latch), 15-22 ns (8b dual-nibble carry)"
+    physical_dds_ceiling: "80-125 MHz (8.0-12.5 ns/byte)"
+    package: "PDIP-40"
+    thermal_budget: "< 1.0 W total (0.85-1.0 W target; theta_JA ~ 45-55 C/W; commercial 0C..70C)"
+    thermal_derating: "T^-1.5 (~0.35-0.45%/C; ~0.82x speed at 70C vs 25C)"
+    pin_drive: "2.0-3.2 mA low-drive perimeter super-buffers (VIRT_EN pin-reroling across 34 bus pins)"
+
+  clocks:
+    master_oscillator: "14.18758 MHz (PAL 4x subcarrier-locked, period = 70.484 ns)"
+    subdivisions:
+      full_t_1T: "281.936 ns (3.546895 MHz nominal; scalable 4-6 MHz)"
+      half_t_1H: "140.968 ns (7.09379 MHz Phi1/Phi2 core phases & 320px VDP pixel clock)"
+      quarter_t_1Q: "70.484 ns (14.18758 MHz global clock; reserved for carry/ALU compute & clock-park)"
+      octal_t_05Q: "35.242 ns (28.37516 MHz eff.; local dual-edge CLK_14M high/low generation for DDS)"
+    clock_gating: "Deterministic OR-gate high-park (short_1q_to_4q) synchronized to 0.5Q/1Q edges (/WAIT & +70C safe)"
+
+hw_invariants:
+  zero_gap_bitslice_floorplan:
+    layout_order: "PLA Decoder | Reg Field | 16b ADDER | Dual-Nibble 8b ALU | Perimeter Pad Ring"
+    metal_constraint: "Single-layer metal pitch optimization; zero inter-block routing gaps"
+    unified_read_bus:
+      name: "RDATA[7:0]"
+      width: "8-bit byte-DDS inter-block bus (saves 8 horizontal metal tracks & ~260-450 FETs vs flat 16b)"
+      sources:
+        - "Reg Field (B, C, D, E, H, L, IXH, IXL, IYH, IYL, LR0, LR1, SPL, SPH, WZL, WZH, TMP_L)"
+        - "16b ADDER byte taps (APC_L/H, AL_L/H, AO_L/H)"
+      alu_local_tap: "Direct 8-bit ALU_OUT[7:0] -> Pad Ring (LH:LL) tap on right edge for simultaneous ALU + store"
+    reg_field_interface:
+      local_quarter_t_mux: "Q0 (0..70.48ns): SP/RR -> ADDER; Q1 (70.48..140.97ns): R -> RDATA -> LH:LL (0 extra read ports)"
+      pin_arrival_skew_3_55mhz:
+        ao_direct_nopld: "25-35 ns from 1H start"
+        ao_rippled_sp_minus_1: "55-70 ns from 1H start"
+        d0_7_write_data: "85-95 ns from 1H start (+15 to +65 ns address-before-data t_AS setup margin)"
+
+  byte_dds_core_fabric:
+    scope: "All ISA-1 & RISC core inter-block transfers (zx48k_platform excluded)"
+    octal_t_only: "All on-die DDS inter-block transfers & pad-ring DDS_L/H muxes run strictly at synchronous octal-T (0.5Q) precision; 1Q reserved for carry/ALU compute"
+    signaling_discipline: "Source-synchronous sender-generates-skew + bundled matched-delay strobe (DATA_STB); receiver transparent-to-hold follows trailing edge"
+    boundary_phase_gates: "Lightweight local 0.5Q pass-gate seams at Reg<->ADDER, Reg<->ALU, ADDER<->ALU, and ALU<->PadRing"
+    reg_pla_dds_sequencer:
+      behavior: "Main PLA emits high-level address token e.g. (SP+d), (IX+d), (RR+); local Reg Field PLA autonomously sequences interleaved TMP_L + RR_L/RR_H byte-DDS beats + DATA_STB"
+      displacement_calc: "Interleaved TMP_L -> RR_L -> RR_H across 3 x 0.5Q beats (~85-115 ns < 0.5T 140.97 ns) w/ hardware SIGN_EXT"
+    frequency_scaling:
+      at_3_55mhz: "0.5Q octal-T = 35.24 ns (4 beats per 1H)"
+      at_4_to_6mhz: "Local latch-to-latch DDS hops remain valid at 0.5Q (20.8-31.25 ns vs ~8-14 ns settle); carry compute scales to 1Q (41.67-62.50 ns)"
+
+  opcode_risc_break:
+    latches:
+      adder_3latch:
+        topology: "Pure 3-latch 16-bit core (AO, AL, APC); no AOB latch"
+        dual_bus_crosspoint: "Every latch (AO, AL, APC) has 2 input pass-gates: LD_<latch>_IN (pre-ripple IN_BUS bypass) and LD_<latch>_SUM (post-ripple SUM_BUS), enabling simultaneous AO->AL + AO+-k->APC in 1H"
+        hold_rule: "Master-slave two-phase output hold on latches driving IN_BUS while capturing SUM_BUS"
+        address_output_mux: "3:1 pass-gate mux (DRV_AO, DRV_AL, DRV_APC) -> AB[15:0] perimeter inverting super-buffer pad drivers (~48 FETs)"
+        ops: "NOPLD (+0), +-1, +-2, +7 via 4-bit Carry-Skip / Manchester carry chain; SADD (A+B + SIGN_EXT) routed via Dual-Nibble ALU or integrated adder path"
+      pad_ring_data_latches:
+        topology: "Distributed bidirectional 16-bit pad-ring latch pair (LH[7:0] odd/high, LL[7:0] even/low)"
+        dds_edge_gen: "Local 0.5Q (35.24 ns) dual-edge generator from CLK_14M (HIGH = DDS_L 0..35.24ns; LOW = DDS_H 35.24..70.48ns) w/ ~3-5 ns non-overlapping dead-band"
+        byte_lane_steering: "A0 steers /WE_L (A0=0) vs /WE_H (A0=1) on 8-bit writes, and routes LL vs LH into DL (opcode fetch) or RDATA[7:0] on 8-bit reads; parallel 16-bit load/drive on WORD/SRAM ops"
+
+  dds_bus_timing:
+    dram_cycler:
+      compatible_drams: "4116, 4516, 4532, 4164, 41256, 4416, 4464, 44256, KR565RU3..7 (including half-defective banked dies)"
+      transceivers: "2x 74F543 registered transceivers (DATA_L, DATA_H) + 74F245 row/col address mux"
+      write_1T: "Q0 (70.48ns): DDS_L (35.24ns, LE_L) + DDS_H (35.24ns, LE_H) -> Q1..Q3 (211.45ns): ROW/COL + Early Write (/WE_L, /WE_H)"
+      read_1T: "Q0..Q2 (211.45ns): ROW/COL + /CAS soak -> Q3 (70.48ns): /DDS_OE_L (35.24ns -> LL) + /DDS_OE_H (35.24ns -> LH)"
+      skew_absorption: "Q0 (70.48ns) absorbs all internal CPU address/data arrival skew before driving DRAM pins; DRAM_SPD modes stretch Q1..Q3 for -25/-30/-37 speed grades"
+
+  sram_concept:
+    canonical_bipolar_scratchpad:
+      chip: "Single-chip 7489 / 82S25 (16 x 4 bipolar TTL RAM, DIP-16, open-collector /O tied to D via 1-2.2k pull-ups)"
+      pin_footprint: "9 CPU pins total (SA[3:0] -> A0-A3, SAD[3:0] <-> D0-D3//O0-O3, /SWE -> /WE; /CE=GND); zero external latches or transceivers (0 ns RD<->WR turnaround)"
+      timing: "Quad-beat octal-T (0.5Q = 35.24 ns/nibble): 1 byte per 0.25T (1Q = 70.48 ns), 16-bit shadow pair per 0.5T (1H = 140.97 ns)"
+      speed_grade_evolution:
+        - "1971-1977: 7489 / 82S25 (35-50 ns max; 3.55 MHz octal-T)"
+        - "1975-1980: 74S189 / 74S289 (35 ns max commercial across 0..70C)"
+        - "1981-1982: 74F189 / 74F289 FAST (25-28 ns max; supports 4-5 MHz octal-T)"
+        - "1984-1985: 74F189A / 74F219A non-inverting (8-12 ns max; supports 8-12 MHz octal-T)"
+    muxed_ad_12pin_protocol:
+      pins: "12 pins: SAD[7:0] (8) + SLE_L (1) + SLE_H (1) + /SWE_L (1) + /SWE_H (1); external 2x 74F573 addr latches + 74F543/245 data buffers"
+      standalone_150ns_sram_read_windows:
+        - "0 - 15 ns: t_OH previous read data hold after address transition"
+        - "15 - 150 ns: Address A[max:0] held valid; /CS=0, /WE=1, /OE=0 (asserted <=80ns since t_OE=70ns); I/O[7:0] indeterminate"
+        - ">= 150 ns: t_AA / t_ACS met; I/O[7:0] guaranteed valid until host capture; t_OHZ = 35-50 ns Hi-Z release after /OE=1"
+        - "Full hardware cycle (incl. 6.5ns 74F573 addr strobe + 9ns data strobe): ~167.5 ns (RD->RD), ~203.5 ns (RD->WR)"
+      muxed_read_schedule_150ns_sram:
+        total: "1.5T (6 x 1Q = 422.91 ns)"
+        windows:
+          - "Q0 (0.00-70.48 ns): SAD[7:0] = SA[7:0]; SLE_L falling edge latches SA_L in 74F573 #1"
+          - "Q1 (70.48-140.97 ns): SAD[7:0] = SA[15:8]; SLE_H falling edge latches SA_H in 74F573 #2 (full SA[15:0] valid at SRAM at 147.0 ns)"
+          - "Q2-Q4 (140.97-352.42 ns, 3Q = 211.45 ns): /SOE=0 soak for 150 ns SRAM (data valid at 297.0 ns; ~55 ns margin)"
+          - "Q5.0 (352.42-387.66 ns, 0.5Q): /SDDS_OE_L=0 -> DATA_L captured into LL[7:0]"
+          - "Q5.1 (387.66-422.91 ns, 0.5Q): /SDDS_OE_H=0 -> DATA_H captured into LH[7:0]"
+      speed_scaling: "150ns SRAM = 1.5T (6Q) | 100-120ns SRAM = 1.25T (5Q) | 45-55ns SRAM = 1.0T (4Q)"
+    parallel_sd16_18pin_protocol:
+      pins: "18 pins: SD[15:0] (16) + /SWE_L (1) + /SWE_H (1) + 2x 74F573 transparent addr latches"
+      at_4mhz_0_5T_125ns: "125 ns half-T minus ~17.5 ns latch/strobe overhead = <=107.5 ns SRAM t_AA required (2148H 45-70ns, 2147H 35-70ns, 2114A-1 100ns, 6116P-1 100ns, 6264P-10 100ns)"
+    historical_bom_1975_1983:
+      - array: "16 x 16 (32B) via 4x 7489 / 82S25 (16x4, 35-50ns)"
+        years: "1975-1983"
+        retail_price_total: "$8-$14 (1975-79), $6-$9 (1981-83); single-chip 16x4 = $1.50-$3.50"
+      - array: "256 x 16 (512B) via 4x 2101 / 5101 (256x4, 250-450ns)"
+        years: "1975-1979"
+        retail_price_total: "$12-$20 total ($3.00-$5.00/chip)"
+      - array: "1K x 16 (2KB) via 16x 2102A (1Kx1, 150-450ns)"
+        years: "1975-1978"
+        retail_price_total: "$24-$40 total ($1.50-$2.50/chip)"
+      - array: "1K x 16 (2KB) via 4x 2114 (1Kx4, 100-450ns)"
+        years: "1977-1983"
+        retail_price_total: "$48-$64 (1977-78), $16-$24 (1979-80), $6-$10 (1981-83)"
+      - array: "1K x 16 (2KB) via 4x 2148H / 2149H (1Kx4, 45-70ns)"
+        years: "1979-1983"
+        retail_price_total: "$40-$60 (1980), $18-$28 (1982-83)"
+      - array: "2K x 16 (4KB) via 2x 6116 / 2016 (2Kx8, 100-200ns)"
+        years: "1980-1983"
+        retail_price_total: "$40-$50 (1980-81), $8-$14 (1982-83)"
+      - array: "8K x 16 (16KB) via 2x 6264 (8Kx8, 100-150ns)"
+        years: "1983"
+        retail_price_total: "$50-$80 ($25-$40/chip in late 1983)"
+
+  zx48k_platform:
+    dram_options:
+      clean_32k_64k_revert: "Reverting Sinclair's defective-4532 + 74LS00/74LS32 + jumper hack to clean 4x 4416 (32K) or 8x 4164 (full 64K upper bank = 80KB total RAM, or all-4164 unified 64K eliminating -5V/+12V rails)"
+    ula_as_chipset:
+      description: "10-11 IC 1982 discrete/LSI chipset replacing Sinclair ULA with zero CPU contention & full MMIO"
+      chipset_bom:
+Используйте код с осторожностью.
+- "1x MC6845 / HD46505 CRTC (PAL 50Hz HSYNC/VSYNC, MA0-MA12 screen addr, RA0-RA2 scanline, hardware smooth scroll)"
+- "1x 14.0 MHz crystal + 74LS74 dual D-FF (7.0 MHz pixel clock, 3.5 MHz CPU clock, /RAS & /CAS timing)"
+- "1x 74LS166 (7.0 MHz 8-bit pixel serializer)"
+- "1x 74LS374 (8-bit attribute latch)"
+- "1x 74LS157 + 1x 74LS86 (INK/PAPER color mux + 1.56 Hz FLASH XOR)"
+- "2x 74LS157 (Row/Col address muxes interleaving CRTC & Z80 on opposite 140ns half-cycles = 0 CPU contention)"
+- "1x 74LS245 (VRAM data bus transceiver)"
+- "1x Intel 8255 PPI (Keyboard matrix row/col scan + BORDER + MIC/EAR/BEEPER + 3-bit 128K-512K bank select)"
+- "1x 74S189 / 74F189 (16x4 dynamic raster-reprogrammable CLUT palette)"
+- "1x 74LS138 (3-to-8 MMIO aperture decoder)"
+mmio_map_3F00h_3F3Fh:
+"3F00h-3F01h": "MC6845 CRTC Register Select & Data (mid-raster scroll/geometry updates)"
+"3F10h-3F13h": "Intel 8255 PPI: Port A (3F10h, K0-K4 + EAR input), Port B (3F11h, 8 keyboard row scan outputs decoupled from A8-A15), Port C (3F12h, PC0-2 BORDER, PC3 MIC, PC4 BEEPER, PC5-7 3-bit RAM/ROM bank select)"
+"3F20h-3F2Fh": "74S189 / 74F189 16x4 Hardware Color Lookup Table (LDIR per-scanline palette reloads)"
+"3F30h-3F3Fh": "Raster-line IRQ compare & shadow screen page-flip control (4000h vs C000h)"
+future_tasks:
+• "Expand remaining half-T RISC sequences (JP cc,nn; JR cc,e; RET cc; PUSH rr; POP rr; LD (nn),A; LD A,(nn)) using 3-latch ADDER (DRV_AO/AL/APC), byte-DDS RDATA[7:0], and reg_pla_dds_sequencer"
+• "Verify 4-6 MHz timing closure on 1Q carry/ALU compute vs 0.5Q octal-T latch-to-latch DDS hops across 0C..70C"
+• "Finalize PDIP-40 34-pin VIRT_EN multiplexing table combining 9-pin 7489/82S25 bipolar scratchpad + DDS DRAM + 12-pin muxed SRAM modes"
+
+HANDOFF_EOF
+
+
+<FollowUp>
+Would you like to **start the next thread** by pasting this handover block to expand the remaining RISC instruction sequences (`JP cc,nn`, `JR cc,e`, `RET cc`, `PUSH`/`POP`), or **verify anything else** in this export?
+</FollowUp>
