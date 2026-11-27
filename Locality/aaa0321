@@ -47,9 +47,10 @@ isa_state:
 
   hw_invariants:
     process_baseline:
-      tech: "1981-1983 2.0-2.5 um NMOS-II / HMOS-II (L_eff ~ 1.5-2.0 um; depletion-load + enhancement pass-FETs)"
-      timing: "tau 0.4-1.0ns; latch hop 4-8ns (25C) / 10-14ns (70C); T^-1.5 (~0.82x @ 70C); 80-125MHz DDS ceiling"
+      tech: "1976-1979 3.0-4.0 um NMOS-I default (1981-1983 2.0-2.5 um NMOS-II / HMOS-II optional shrink; 1975-78 8080/6502/8086 dynamic C_gs + precharged bus precedent)"
+      timing: "NMOS-I tau ~1.5-2.5ns, R_on ~2-4k, blind clock-driven precharge (0-10ns) + 3T C_gs evaluate (10-35.24ns) inside 0.5Q=35.24ns; C_gs hold ~0.5-2ms @ 70C; NMOS-II tau 0.4-1.0ns, 80-125MHz DDS ceiling"
       thermal: "<1.0W PDIP-40 (0.85-1.0W target; theta_JA ~45-55 C/W; 2.0-3.2mA perimeter pin super-buffers)"
+      clk_stopped_leakage_osc: "~25-FET missing-pulse C_wd detector + temp-tracking junction-leakage relaxation osc keeping 3T dynamic C_gs cells refreshed when master clock stops (0 bus arbitration needed)"
     least_tr_solution:
       base_evolution: "Vanilla Z80 main pg is lowest-TR root; evolve by evicting low-ROI ops then migrating pfxs"
       word_vanilla_mutation_test: "WORD pfx family originally applied over vanilla Z80 main pg as root"
@@ -68,9 +69,13 @@ isa_state:
       stack_fifo: "Hardwired to EXX0.SP at SRAM_TOP; spills 4B/burst to DRAM; STACK_DEPTH/FLUSH/FETCH"
       stack_fifo_memcpy: "STACK_FETCH at src SP then STACK_FLUSH at dst SP performs zero-CPU-loop bulk memcpy"
       push_pop_lr_bind: "PUSH/POP RR sets LR to pushed/popped RR; 0xF1=POP LR, 0xF5=PUSH LR"
+    reg_cache_lfu:
+      slots_6x16b_12B: "12B (6x16b=96b) split BANK_L/H register cache holding active {BC,DE,HL,IX,IY,V} + 3b saturating (0..7) LFU aging (~185 FETs) & 20b {EXX1:0,RR_ID2:0} FIFO_SHL5 shadow tags (~125 FETs); SP/PC in ADDER, AW/EF in ALU"
+      cell_3t_dyn_reread: "Plain 3T addressable dynamic C_gs cells (288 cell FETs for 96b, ~348 total block FETs, 0 static DC power); non-destructive 0.5Q reads via blind clock-driven RDATA_L/H precharge (0-10ns) + evaluate (10-35.24ns); 2-beat 1Q (70.48ns) split RD_SEL->RDATA latch->WR_SEL scrub (0..5 counter every ~48-64T) & opportunistic post-read WB"
+      sram_backing: "1Q/nibble external 64x4 SRAM (82S21/AM27S03 or 2114) backs EXX1..3 shadow banks + 2-word (8-nibble) AW'/EF' slot (~220-260 FETs saved, 1.0T atomic EX AF,AF' swap); 0-cycle EXX tag mutation"
     zero_gap_bitslice_floorplan:
       layout: "2D Whole-Die Distributed-PLA (~14mm2, ~2.8-3.1k core FETs saved): West=Cycler/DIO_BUF, North=ADDER+E+PC/SP/ADDER_PLA, Center=Reg/REG_PLA, South=ALU+AW/EF/ALU_PLA, East=16b Cracker/MAIN_PLA"
-      reg_banks: "BANK_L (bit 0..7: C,E,L,IXL,IYL,SPL,PCL,WZL,VL,LR0,W) & BANK_H (bit 8..15: B,D,H,IXH,IYH,SPH,PCH,WZH,VH,LR1,A)"
+      reg_banks: "6x16b 3T dynamic BANK_L (bit 0..7: C,E,L,IXL,IYL,VL + LR0) & BANK_H (bit 8..15: B,D,H,IXH,IYH,VH + LR1); SPL/PCL/WZL & SPH/PCH/WZH in North ADDER; W/A & F/OLD_F in South ALU"
       locks: "AB:AA high:low byte order; SIGN_EXT latch; loading DL directly drives MAIN_PLA; active F bits exposed to MAIN_PLA"
       unified_rdata_bus: "Orthogonal dual 8b byte-DDS RDATA_L/H[7:0] + shared 8b ADDR_DDS[7:0] + direct 8b ALU_OUT->LH:LL"
       reg_skew_budget: "0.25T mux: Q0 SP->ADDER (AO 25-35ns dir / 55-70ns rip), Q1 R->RDATA->LH:LL (85-95ns; +15..65ns t_AS)"
@@ -85,21 +90,23 @@ isa_state:
       freq_scaling: "3.55MHz: 0.5Q=35.24ns (4/1H); 4-6MHz: latch-to-latch DDS stays 0.5Q (20.8-31.25ns), carry scales to 1Q"
     two_tier_stall_and_clock_gating:
       short_1q_to_4q: "Synchronous 14.18758MHz OR-gate CPU_CLK high-park BEFORE Phi1/Phi2 gen (70.48ns steps, <=2000ns)"
-      long_gt_4t: "Free-running Phi1/Phi2 with decoder state-hold on !DATA_READY/WAIT_SAMPLED + depletion keepers"
-      non_blocking_wb: "Independent ALU/ADDER self-action write-backs & internal updates complete during !DATA_READY waits"
-    virt_en_34pin_rerole:
-      trigger: "VIRT_EN = NOR(/IORQ, /RFSH) impossible Z80 state re-roles 34/40 PDIP pins (6 fixed)"
-      dds_dram_14pin: "AD[7:0], A8, A9, /WE_L, /WE_H, WAIT_SAMPLED, CROSSBAR_ODD_EVEN; always-read default; linear 1MB"
-      sram_16bit_18pin: "SD[15:0], /SWE_L, /SWE_H (0.5T: Phi1 SA[15:0] -> 74ALS373/74F573 latch, Phi2 16b data; up to 64KB)"
-      nonmux_8b_sram: "18p non-muxed 2x8b bank SRAM: SD[7:0] + SA[7:0] + /SWE_A + /SWE_B (0 ext addr latches <=512B)"
-      interrupts_2pin: ["/INT", "/NMI"]
-      auto_disarm: "Disarms VIRT_EN=0 for EPROM (0x0000-3FFF), /IORQ, HALT, /BUSRQ; crossbar Hi-Z & 4.7k write-lock"
-    opcode_risc_break:
-      principle: "Strict NMOS silicon datapath fidelity: 0 invented latches/ALU ops; 0WS DL-pre-primed root (0.5T decode)"
-      latches:
-        adder_dual_nibble: "Narrowed 2x4b Dual-Nibble ADDER (ADD, SADD, SUB, NOP only; 1Q/stage, lo->hi DDS) w/ AO, AL, APC, TMP_H & AS (ASH:ASL wired to D0-7)"
 Используйте код с осторожностью.
+long_gt_4t: "Free-running Phi1/Phi2 with decoder state-hold on !DATA_READY/WAIT_SAMPLED + depletion keepers"
+non_blocking_wb: "Independent ALU/ADDER self-action write-backs & internal updates complete during !DATA_READY waits"
+virt_en_34pin_rerole:
+trigger: "VIRT_EN = NOR(/IORQ, /RFSH) impossible Z80 state re-roles 34/40 PDIP pins (6 fixed)"
+dds_dram_14pin: "AD[7:0], A8, A9, /WE_L, /WE_H, WAIT_SAMPLED, CROSSBAR_ODD_EVEN; always-read default; linear 1MB"
+sram_16bit_18pin: "SD[15:0], /SWE_L, /SWE_H (0.5T: Phi1 SA[15:0] -> 74ALS373/74F573 latch, Phi2 16b data; up to 64KB)"
+nonmux_8b_sram: "18p non-muxed 2x8b bank SRAM: SD[7:0] + SA[7:0] + /SWE_A + /SWE_B (0 ext addr latches <=512B)"
+interrupts_2pin: ["/INT", "/NMI"]
+auto_disarm: "Disarms VIRT_EN=0 for EPROM (0x0000-3FFF), /IORQ, HALT, /BUSRQ; crossbar Hi-Z & 4.7k write-lock"
+opcode_risc_break:
+principle: "Strict NMOS silicon datapath fidelity: 0 invented latches/ALU ops; 0WS DL-pre-primed root (0.5T decode)"
+post_decode_mutators_and_skewer: "MAIN_PLA cracks base op once -> modular pass-FET sub-mutators (WIDTH_MUT -> RR_LR_MUT -> REV_SWAP) resolve all EXX/AW'/LR/WORD/REV/MODE_V mutations into concrete physical IDs for mutation-agnostic REG_PLA/ALU_PLA/ADDER_PLA; LD r,r' handled directly via REG_PLA RDATA_L/H cache-bypass (ALU untouched except A/W/F data flow); MUT_HEAVY=1 slips local DATA_STB/ALU_STB/ao_write launch by +0.5Q (+35.24ns) via granular octal-clock skewer"
+latches:
+adder_dual_nibble: "Narrowed 2x4b Dual-Nibble ADDER (ADD, SADD, SUB, NOP only; 1Q/stage, lo->hi DDS) w/ AO, AL, APC, TMP_H & AS (ASH:ASL wired to D0-7)"
 adder_e_cluster: "8b segment regs {E_PC,E_HL,E_IXY,E_V,E_SP} in ADDER cluster; static E @ t=0 if C_16=0; conditional C_16 carry + TDS ao_e_write"
+adder_e_3t_dyn_latches: "All E-block (40b) & ADDER latches (PC,SP,AO,AL,APC,TMP_H,AS = 120b; 160b total, ~525 FETs) use 3T dynamic C_gs cells w/ non-destructive 0.5Q reads & 2-beat 1Q ADDR_DDS scrub"
 adder_ops: "NOPLD/INCLD/DECLD/SADD via ADD/SUB/NOP + SIGN_EXT; pre-ripple default emit (src>AO+-k:WB) vs post-ripple (WB:src+-k>AO)"
 cycler_ab_latches: "Cycler owns AB_H:AB_L (A0-15) pad latches + local clustered 4b +1 inc (SP-2 upward-only); split /WE_L/H avoids RMW (+1 WR/RD on misaligned DRAM)"
 alu_2stage: "Dual-nibble ALU w/ local PLA (autonomous next-1H DDS write-back + 1-entry ALU_WB_PEND interlock) + AW/AW'/F/F'/FLG/AA/AB/AR + SIGN_EXT; active F wired to Main PLA"
@@ -152,7 +159,7 @@ quarter_t_1q_nibble_sram: "1x 64x4 (32B) 82S21/AM27S03 (11p: SA[5:0]+SAD[3:0]+/S
 fast_0_5q_74f573_addr_strobe: "30-35ns (0.5Q) transparent 74F573 addr latch overlaps 45ns 2148H-2 lookup -> 0.5T muxed 16b RD, 0.5T-0.75T WR"
 era_1975_1977_mem_selection:
 sram_75_77: "32B: 4x 7489 / 1x 82S21 (64x4) @ 0.5T-1.0T | 256B: 2x 6810 (128x8, 1.5T-2.0T) | 512B: 4x 2101A/2111A (256x4) | 2KB: 16x 2102A-2 (150ns @ 1.0T)"
-dram_75_77: "MK4027-2/-3 (4Kx1, 150-200ns, t_RC=320-375ns) & MK4116-2/-3 (16Kx1); requires 1.5T or Odd-Even Crossbar precharge"
+dram_75_77: "MK4027-2 (4Kx1, 1976), MK4116-2 (16Kx1, 1977), & 22p non-muxed Intel 2107B-4 (4Kx1): 150ns t_RAC matches 150ns SRAM on single reads + ~95-100ns Page-Mode bursts, but 320ns t_RC (/RAS precharge) requires Page-Mode or Odd/Even dual-bank interleaving for 1.0T cycles"
 muxed_ad_12pin_protocol:
 pins: "12 pins: SAD[7:0] + SLE_L + SLE_H + /SWE_L + /SWE_H + ext 2x 74F573 addr latches + 74F543/245 buffers"
 standalone_150ns_windows: "0-15ns t_OH | 15-150ns A valid, /OE=0(<=80ns, t_OE=70ns), I/O invalid | >=150ns valid (t_OHZ 35-50ns)"
@@ -223,6 +230,7 @@ am_rr_modes: "?[fut] evicted for future task (3b per-reg latch via AM n/LR on LR
 ss_rr_modes: "6b per-reg latch via SS n on LRPAGE; 0x27 0xD9=SSDEF"
 zx48k_platform:
 target: "Custom 1981-83 PAL50 ZX-Class Computer (Single ISA-1 BOM $38.27-$56.70 -> $115-$165; Dual w/ Z80A $41.77-$61.70 -> $123-$175)"
+nmos1_3t_dyn_extra_exx_banks: "3T dynamic C_gs cells + ~25-FET clk-stopped leakage-matched osc cut vanilla Z80 22B reg file from ~1,176 FETs to ~693 FETs (-483 FETs), fitting EXX0..2 (~905 FETs) or full EXX0..3 (~1,117 FETs) inside vanilla FET/thermal budget"
 dram_clean_32k_64k_revert: "Revert defective-4532 + 74LS00/32 hack to clean 4x 4416 (32K) or 8x 4164 (full 64K upper bank = 80KB RAM, or unified 64K 4164 dropping -5V/+12V)"
 ula_as_chipset:
 summary: "10-11 IC 1982 discrete/LSI chipset replacing Sinclair ULA w/ 0 CPU contention & full MMIO (3F00h-3F3Fh)"
@@ -244,20 +252,51 @@ crossbar_bom_5ic: "CPU-side 3 ICs (74F245 + 74F125 + 74F02) + VDP-side 2 ICs (74
 legacy_slave: "Symmetric FCFS /WAIT arbiter w/ LAST_WINNER FF; BYTE_MODE=1 steers A0; Master=/INT, Slave=/NMI"
 ula_mmio: "0 /IORQ ports; MMIO +0x7F0..7F7 KBD, +0x7F8 ULA_CFG, +0x7F9 BEEPER_MIC, +0x7FA EAR_IN, +0x7FB SYS_STATUS"
 memory_map: "0x0000-3FFF ROM + 16KB shadow RAM | 0x4000 VDP FONT_BASE + [CHAR,ATTR] | 0x8000+ User RAM (64KB..1MB)"
+mechanical_mod:
+base_stack:
+orientation: "Upside-down DIPs & 48p ULA+heatsink hanging below main PCB; top side is flat typing anvil"
+layers_bottom_to_top: "1. Main PCB top w/ uncut ~2.5-3.0mm solder pins -> 2. 3.0mm soft rubber shock-cushion -> 3. 0.8-1.0mm rigid plastic puncture-proof anvil plate -> 4. 3-layer Mylar keyboard sandwich + rubber keymat"
+emc_thermal:
+ula_heatsink: "Low-profile aluminum DIP heatsink on 48p ULA (theta_JA ~25-30 C/W)"
+fcc_emc_shield: "Self-adhesive Cu/Al foil on inner lower ABS shell & rigid plastic anvil plate tied to PCB GND"
+wider_case_layout:
+dimensions_mm: "295 x 155 (+57mm wider than vanilla 233x144mm wedge); 19mm key pitch, full-width bottom-center SPACE, L-shaped ENTER, dedicated DELETE/EDIT/cursors wired via dual-trace Mylar to CAPS+0/5/6/7/8 (0 extra ULA pins)"
+clamshell_ide_flyback_psu:
+enclosure: "Fully openable clamshell case + hinged rear service lid + internal plastic safety partition bay"
+psu_daughter_pcb: "Zero-gap keyed 2x4 IDE-style shrouded box-header; 45-65kHz isolated EE19/2xEE13 ferrite flyback (>3kV isol), tin-plate Faraday shield can, 2-pin C7 mains cord, +5V@1.5A (~£179 net 1982 retail parity w/ £175 48K)"
+spectrum_modular_extension:
+compact_main_unit: "~190 x 135 x 38 mm console footprint housing main PCB, 48p ULA+heatsink, & rear flyback PSU bay"
+detachable_keyboard: "Passive 13-pin (8x5 matrix) coiled cord + ~295 x 140 x 22 mm ergonomic rubber-anvil Mylar keyboard (0 active ICs)"
+dual_buttonless_tape_decks: "Deck A/B on keyed 2x4 zero-gap dock; buttonless full-logic 1-solenoid cam-gear /HEAD_ENGAGE, FWD/REV motor (/MOTOR_A/B, DIR), /CASSETTE_IN, /REC_EN, IR reel-pulse digital tape counter & 10x auto-seek, shared LM358/74LS14 Schmitt EAR/MIC @ 1500-6000 baud (~£184 base, ~£198 1-deck, ~£218-£222 dual-deck studio)"
 VDP_section:
 hardware_architecture:
-ula_silicon: "Dedicated Ferranti 5C/6C ULA (~1,140 gates used of ~1,200-1,400; legacy 0xFE I/O & tape removed)"
-package: "40-pin PDIP (13p DDS crossbar + 6p 2114 Index SRAM + 9p RGB332/CSYNC + 4p clk/pwr/rst + 8p spare/MMIO)"
-video_output: "8-bit RGB332 (R[2:0], G[2:0], B[1:0] resistor DAC) + /CSYNC + BURST_DIS -> TEA2000/MC1377 & RGB SCART"
+ula_silicon: "Dedicated Ferranti 5C/6C ULA (~1,140g full-mode or ~680g stripped 48-pin tiled+blitter partition)"
+package: "40-pin PDIP (full) or 48-pin PDIP (Ferranti 5C/6C ~680g @ 56% yield/thermal sweet spot ~305mW + Al heatsink)"
+video_output: "8-bit RGB332 / 2222 LRGB / RGB555 DAC + /CSYNC + BURST_DIS -> TEA2000/MC1377 & RGB SCART"
+ula_48dip_tiled_blitter_partition:
+gate_budget: "~680 gates (~56% of 1,200-1,400g die; single-pass autoroute, high wafer yield)"
+ula_14mhz_edge_skew_vernier: "14.18758 MHz dual-edge 0.5Q (35.24ns) precision skew vernier (~30g, +25mW) for /EARLY_GRANT handover, /RAS-/CAS-t_RP DDS strobe shaping, & sub-pixel SCX alignment; core ULA stays at 7.09/3.55 MHz"
+external_msi_chips:
+- "4x 74LS161/74F161: 12b CMD_PTR[11:0] (4,096B wrap) + H/V COL[5:0] raster counters (saves ~210 ULA gates)"
+- "1x 74F157: SRC/DST byte-transparency merge & X_OFF DATA_L<->DATA_H swap mux"
+- "1x 74LS374: RGB555 high-byte pixel latch"
+stripped_tiled_color_tiers:
+- "4-bit RGBI (1111, 16 direct colors, 0x0=trans): 2 turns/8px row -> 320x240p @ 80T (50/50) or 368x288p @ 92T"
+- "8-bit 2222 LRGB (LL_RR_GG_BB) / RGB332 (256 colors, 0x00=trans): 4 turns/row -> 160x240p @ 80T or 352x264p @ 176T burst (~45.5 avg free H-blank turns/line)"
+- "12-bit RGB444 (4,096 colors): 1px/word w/ 4b T/PRIO/BLEND flags @ 8 turns (160x240p) or 3-nibble packed 4px/3w @ 6 turns (208x240p)"
+- "16-bit RGB555+T (32,768 colors, bit15=trans): 8 turns/row -> 80x240p @ 80T or 160x240p @ 160T burst"
+bounded_scroll_and_clipping: "SCX[7:0] (3b tap + 5b col), V_SKIP[7:0] top down-counter, H_MARGIN/V_MARGIN 4-edge guard-band curtain clipping"
+idle_turn_tile_imprint_blitter: "Runs strictly in unused VDP DDS turns (~23,021 free turns/50Hz field in 352x264p burst); 4,096B (512x8B) 12b-wrap cmd ring; 8B desc [SRC,DST,MAP_CELL,OFF,CFG] -> 4T cmd + 32x[RD,RD,WR] (0x00=trans) + 1T atomic MAP_CELL patch = 101 turns/tile -> 227 64B tiles/50Hz (~25 16x16 sprites @ 50Hz, ~51 @ 25Hz)"
 ula_index_sram:
 chip: "1x 2114-12 (1024x4, 120ns) quad-series nibble SRAM (6 ULA pins: ULA_SD[3:0], ULA_LE_SA, /ULA_SRAM_WE)"
-timing: "0.5T (140.97ns)/nibble = 2T/16b CHAR_CODE; pre-reads 40x 16b indices (40T) inside 42.5T H-blank at Y_FIELD=7"
+timing: "0.5T (140.97ns)/nibble = 2T/16b CHAR_CODE (or 1Q/nibble pipelined H-blank CHAR prefetch on Y%8==0 w/ SA[9:4]=COL[5:0] from 74LS161, leaving 768x4 nibbles free)"
 display_geometry:
 active_safe_area: "320 x 240p (or 320 x 480i interlaced)"
 borders_pal: "24px L/R (3.42us each) + 24 lines T/B inside 368x288 visible PAL raster (CRT overscan safety)"
+fullscreen_1to1_presets: "FRAME_SIZE[1:0] (turns=W/2): 00=320x240p (160T/67T, 40x30) | 01=352x264p (176T/51T, 44x33 CRT bezel) | 10=360x270p (180T/47T, 45x33.75 4:3) | 11=368x288p (184T/43T, 46x36 max PAL)"
 pixel_aspect_ratio: "1.042:1 at 7.09379MHz (within 4.2% of 1:1 square)"
 tv_chroma_trap_rule: "320px (7.09MHz) stays below 4.43MHz PAL chroma trap; 640px (14.19MHz) uses RGB SCART or BURST_DIS"
-dds_bandwidth_per_line: "80 active VDP turns x 2B = 160 B/line (38,400 B/frame contention-free), or 160 turns = 320 B/line"
+dds_bandwidth_per_line: "80 active VDP turns x 2B = 160 B/line (38,400 B/frame contention-free), or 160-184 turns in burst"
 memory_layout:
 font_base_default: "0x4000 (16384) — pure A14=1 wire-concatenation (0 adder gates); 0x0000-0x3FFF free for CPU RAM"
 coupled_text_words: "Follows FONT_BASE (0x4800/0x5000/0x6000); 16b word packs DATA_L=CHAR[7:0] & DATA_H=ATTR[7:0]"
@@ -273,7 +312,7 @@ mode_4_direct_4bit_lrgb: "Direct 4b LRGB (16 colors/px, 0 attrs): 320x480i (75KB
 mode_5_direct_rgb332: "Direct RGB332 (256 colors/px, 2 px/word): 320x480i linear (150KB, 160 turns) or 8x16i/16x16i tiles"
 mode_6_direct_rgb565: "Direct RGB565 (65,536 colors/px, 1 px/word): 140x480i / 160x480i via 1 CHAR_16 + 7/8 RGB565 reads/cell"
 enclosure_bom:
-case_and_floorplan: "Widened wedge (~355-370 x 155 x 30 mm), single-plane 3-board coplanar array (~2mm hairline seams)"
+case_and_floorplan: "Widened wedge (~355-370 x 155 x 30 mm) or compact modular ~190x135x38mm main + detachable keyboard"
 motherboard: "~285 x 85 mm (ULA left, ISA-1 center, optional Z80A Slave right; perimeter-flush J1 & J3 34p)"
 dram_pcb: "155 x 62 mm bottom-left; 32 DIP-16 (or 4 DIP-18 Rev-B) + 2x 74F543 (DATA_L/H) + 33R; Rev-0/A/B"
 eprom_pcb: "~125 x 62 mm bottom-right coplanar bay via J3 34p connector (4-8x 28p JEDEC 2764/27128/27256)"
@@ -357,7 +396,7 @@ fut_discovery: "tri_op_3_operand_alu: when k>=2 RR pfxs stream in M1, pair rr_pr
 future_tasks:
 - "half_t_risc_seq_expansion: rewrite POP rr, RET cc, JP cc,nn, JR cc,e, LD (nn),A, LD A,(nn) w/ 0WS cycler & WB:"
 - "freq_scaling_4_to_6mhz_closure: verify 1Q carry/ALU vs 0.5Q octal-T latch-to-latch DDS across 0C..70C at 4-6MHz"
-- "ula_spare_pin_mmio_map: define exact register map for 8 spare ULA pins (VDP_MODE, SCROLL, BORDER, BURST_DIS)"
+- "ula_spare_pin_mmio_map: define exact register map for 48-pin ULA & MMIO (FONT_BASE, TEXT_BASE, CMD_BASE, FRAME_SIZE, VDP_MODE, SCX, V_SKIP, H/V_MARGIN, BORDER, BURST_DIS)"
 - "pal_subcarrier_gen: finalize 4.43361875MHz PAL colorburst generation/lock alongside 14.18758MHz crystal"
 - "quarter_t_inter_pla_signaling: evaluate internal 0.25T (Q0..Q3) inter-PLA signaling + depletion keepers"
 - "free_wheeling_commit_discipline: combinational datapaths churn until explicit Q3/Phi2 COMMIT strobes fire"
@@ -377,12 +416,35 @@ future_tasks:
 - "nmos1_post_ripple_binning_bounds: F_OSC ceiling 6.9-8.8MHz (Q1 /RAS) or 10.4-13.2MHz (Q1.5 /RAS) on binned NMOS-I; F_min 6-14.19MHz"
 - "cycler_post_ripple_1t_align: route POST_RIPPLE+AO_DONE to cycler to auto-park CPU_CLK to next 0.5T SRAM or 1.0T T_CPU boundary"
 - "aligned_16b_0ws_overlap: A0=0 16b reads deliver high byte at 0WS & writes preload low byte at 0WS; A0=1 splits (+1 cycle)"
-- "bootstrap_dram_speed_autodetect:
-~48B EPROM routine probing QDS/DDS/SDS & DRAM_SPD (2.0T->1.5T->1.0T) + POST_RIPPLE_FAST at reset"
+- "bootstrap_dram_speed_autodetect: ~48B EPROM routine probing QDS/DDS/SDS & DRAM_SPD (2.0T->1.5T->1.0T) + POST_RIPPLE_FAST at reset"
 - "e_cluster_sw_ops: LRPAGE/SYS ops for addressing-only E regs (LD E,A/n/LR0, CALLF/RETF/JPF, EX/LD E,E, INC/DEC E, E_DE/E_BC)"
-- "rel24_24b_datapath_ext: EAS latch, 3-step lo->mid->hi ADDER ripple, E-extended EAO/EAL/EAPC/EWZ/AB_E latches"
-- "fifo_shl5_4rr_reg_cache: 20b {EXX1:0,RR_ID2:0} FIFO_SHL5 4-slot on-die reg cache (~125 FETs), 0-cycle EXX mutation, 1Q nibble SRAM backing"
-- "reg_cache_3b_lfu_aging: 4-slot split BANK_L/H reg cache (~350-460 net FETs saved) w/ 3b saturating 0..7 cnt + miss-decrement aging (~185 FETs), SP/PC in ADDER, AW/EF in ALU"
-- "aw_ef_prime_sram_evict: evict AW' & EF' to 2-word (8-nibble) slot in 64x4 SRAM (~220-260 FETs saved); 1.0T atomic 1Q/nib EX AF,AF' swap"
+- "rel24_24b_datapath_ext: EAS latch, 3-step lo->mid->hi ADDER ripple, E-extended EAO/EAL/EAPC/EWZ/AB_E latches (scalable to 30b/32b E_HI:E_LO)"
 - "rr_stack_2x1q_dds_1_5t: allow any cached RR as secondary stack pointer via RDATA_L/H (L->H) -> ADDER +-2 :WB (~55-85 FETs, 1.5T hit vs 1.0T 0-DDS EXX0.SP)"
+- "vdp_scanline_cfg_rle_dda: replaces vdp_quad_screen_mirroring; per-scanline RLE display-list {SKIP_PX,TILE_CNT} + mid-line JMP_PTR arbitrary split/quad viewports + inline BORDER/SCX + explicit GLYPH_ROW[3:0] V-scale + continuous 4b DDA H_STEP[3:0] H-zoom (and optional 2114 ping-pong 368x4 Y+1 pre-drawn sprite line buffer)"
+- "ula_blitter_companion: optional standalone ~328g 24p DIP Ferranti 2C/3C companion blitter ULA (or 12-15 IC 74F/74LS+82S123 discrete prototype BOM) if unbundled from 48p VDP ULA"
+- "vdp_0_5x_half_clock_mode: optional 3.55MHz (0.5X) low-bandwidth pixel clock mode (160x240p/176x264p @ 15.625kHz PAL sync, freeing 50% active DRAM turns to CPU)"
+- "dual_issue_pending_wb_di: consecutive matching LD r1,r2 (or dst1==dst2) discards PENDING_WB to dispatch 49-210 extended/3-op instructions"
+- "rrb_pfx_16x8_alu: prefix pairing 16b RR_PTR left operand w/ zero-extended 8b {0x00,r} right operand on 16b ALU adder"
+- "shl1_add_rr_indexing: shift right 16b ALU operand left by 1 bit (HL + (rr<<1)) for single-op 16b table indexing"
+- "x_main_exchg_flag_test: prefix turning ALU ops into non-destructive flag-only TEST (DST_WE=0) & LD/ADD/port into bidirectional EX swaps"
+- "sticky_lock_rr_unlk: repeating RR prefix () locks bank/ptr persistently (LOCK_) until :00 (UNLK)"
+- "zcf_and_carry_arm_pfx: dedicated ZCF (clear CY/N/H, A untouched) + CARRY arming prefix feeding ADD/SUB without ADC/SBC encodings"
+- "im4_128vec_sram_table: reserve 0x0040-0x013F in Local SRAM for 128x16b IM 4 vector table + power-of-2 masked STACK_FIFO pointers"
+- "m7_bus_hold_sram_run: continue CPU execution out of private 0WS Local SRAM while external DMA/Slave holds /BUSACK=0"
+- "rdf_wrf_flag_xfer: single-byte flag read/write (F[7:0] <-> shadow A1/A2/A) on RR-prefixed pages"
+- "bitwise_pointers_with_arraying: bit-addressed pointers {byte_addr, bit_offset[2:0]} + auto-incrementing bit-stride (+1b/+2b/+4b/+Nb) via CY/BEX/PEX"
+- "scut0_7_sram_shortcut_feed: 8 single-byte main-page shortcut opcodes (SCUT0..7 -> SRAM_BASE + slot<<4) fed by 0WS SRAM / Reg-Cache Cycler via 1b SCUT_FETCH_ACTIVE wire, reusing OP_CUR/OP_LEN at 0WS-0.5WS w/ CACHE_MISS pause guard"
+- "fetch12_and_mut_pal16: paired 12b opcode fetch mode (FETCH12: 2x12b=3B w/ nibble-split B1 & byte-aligned trailing imms, vs default FETCH8) where OP[11:8] indexes 16-entry decoder-local MUT_PAL[0..15] (8b/12b/16b) driving WIDTH_MUT/RR_LR_MUT/REV_SWAP"
+- "dynamic_cgs_remaining_latches: extend 3T/4T dynamic C_gs cells to transient ALU/cracker latches (AA,AB,AR,DL,DIO_BUF,OLD_F) & scrubbed MEM[0..7]/LR while keeping CFG_/IFF1/2/IM 6T static"
+- "retain_stack_32b_sram_window: 32B (16-word) top-of-stack cache window in 0WS SRAM spilling/filling in bursts to DRAM"
+- "retain_code_window_stay: on-chip / 0WS SRAM loop buffer + STAY (freeze-PC) command executing small blocks w/ 0 external M1 fetches"
+- "retain_dual_256b_mem_windows: two independent 256B sliding SRAM apertures ({VAR_BASE_0,n} & {VAR_BASE_1,n}) for fast dual-page R/W"
+- "retain_16_memio_ptr_history: 16-entry history ring/CAM of recent WZ/IO_PTR addresses addressable via 4b index"
+- "retain_2op_history_lastop: 2-deep decoded micro-op history latch enabling single-byte LASTOP replay of T-1 or alternating (T-2,T-1) pairs"
+- "sys_regs_in_memptr_v_space: map internal system latches (WZ, LR, VAR_BASE, E_, CFG_*, OP_CUR) into MODE_V (V) 8b imm aperture"
+- "unlimited_operanding_stream: arbitrary M1 prefix stacking (SRC1, SRC2, DST, OFFSET, STRIDE) for multi-operand / mem-mem ops"
+- "selectable_word_size_8_16_32: modal/prefix-selected 8b/16b/32b width across 4b sliced ALU & bitwise ops (BIT/SET/RES/FIND0/1/MIRR)"
+- "associative_code_pattern_cam: hardware {mask,match}->micro-seq CAM table in SRAM ahead of MAIN_PLA for foreign ISA (6502/6800/8080) translation"
+- "predecoder_8to12_xlat_palette: optional 256x12b SRAM XLAT lookup stage (2 palettes in 1KB SRAM) ahead of DL[11:0]"
+- "sound_coproc_z80a_mailbox: dedicated Slave Z80A + 2KB 6116 private SRAM + AY-3-8910/DAC communicating via 2x 74LS374 MMIO mailbox"
 HANDOFF_EOF
