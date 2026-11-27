@@ -69,14 +69,16 @@ isa_state:
       stack_fifo_memcpy: "STACK_FETCH at src SP then STACK_FLUSH at dst SP performs zero-CPU-loop bulk memcpy"
       push_pop_lr_bind: "PUSH/POP RR sets LR to pushed/popped RR; 0xF1=POP LR, 0xF5=PUSH LR"
     zero_gap_bitslice_floorplan:
-      layout: "Pad Ring | Dual-Nibble ADDER | Split BANK_L/BANK_H Reg Field | Dual-Nibble ALU | PLA (1-layer metal)"
+      layout: "2D Whole-Die Distributed-PLA (~14mm2, ~2.8-3.1k core FETs saved): West=Cycler/DIO_BUF, North=ADDER+E+PC/SP/ADDER_PLA, Center=Reg/REG_PLA, South=ALU+AW/EF/ALU_PLA, East=16b Cracker/MAIN_PLA"
       reg_banks: "BANK_L (bit 0..7: C,E,L,IXL,IYL,SPL,PCL,WZL,VL,LR0,W) & BANK_H (bit 8..15: B,D,H,IXH,IYH,SPH,PCH,WZH,VH,LR1,A)"
-      locks: "AB:AA high:low byte order; SIGN_EXT latch; loading DL directly drives PLA; active F bits exposed to Main PLA"
+      locks: "AB:AA high:low byte order; SIGN_EXT latch; loading DL directly drives MAIN_PLA; active F bits exposed to MAIN_PLA"
       unified_rdata_bus: "Orthogonal dual 8b byte-DDS RDATA_L/H[7:0] + shared 8b ADDR_DDS[7:0] + direct 8b ALU_OUT->LH:LL"
       reg_skew_budget: "0.25T mux: Q0 SP->ADDER (AO 25-35ns dir / 55-70ns rip), Q1 R->RDATA->LH:LL (85-95ns; +15..65ns t_AS)"
+      dio_buf_pad_slice: "Distributed 4b/pad DIO_BUF[0..3] (16 FETs/pad) inside AD0..7 pad cells; ~1.5-2.5ns capture skew"
     byte_dds_core_fabric:
       scope: "Global across ISA-1 & RISC core inter-block transfers (zx48k_platform excluded)"
       octal_t_only: "All on-die DDS transfers & pad-ring DDS_L/H muxes run strictly at sync 0.5Q (35.24ns); 1Q for compute"
+      tds_on_die_mode: "3-beat Triple-Data-Strobe (AOL->AOH->EAO) on-die DDS mode; external RAMs stay QDS/DDS/SDS"
       orthogonal_polarity: "Hardwired ADDER<>REGS=L->H & REGS<>ALU=H->L (0 swap FETs, 0 bank collisions); AL/AO/APC->AB_H:AB_L"
       signaling: "Source-synchronous sender-skewed bundled strobe (DATA_STB / ALU_STB); local 0.5Q pass-gate seams"
       reg_pla_sequencer: "Main PLA issues (SP+d)/(IX+d)/(RR+); Reg PLA sequences TMP_L->RR_L->RR_H + SIGN_EXT (~85-115ns)"
@@ -89,20 +91,24 @@ isa_state:
       trigger: "VIRT_EN = NOR(/IORQ, /RFSH) impossible Z80 state re-roles 34/40 PDIP pins (6 fixed)"
       dds_dram_14pin: "AD[7:0], A8, A9, /WE_L, /WE_H, WAIT_SAMPLED, CROSSBAR_ODD_EVEN; always-read default; linear 1MB"
       sram_16bit_18pin: "SD[15:0], /SWE_L, /SWE_H (0.5T: Phi1 SA[15:0] -> 74ALS373/74F573 latch, Phi2 16b data; up to 64KB)"
+      nonmux_8b_sram: "18p non-muxed 2x8b bank SRAM: SD[7:0] + SA[7:0] + /SWE_A + /SWE_B (0 ext addr latches <=512B)"
       interrupts_2pin: ["/INT", "/NMI"]
       auto_disarm: "Disarms VIRT_EN=0 for EPROM (0x0000-3FFF), /IORQ, HALT, /BUSRQ; crossbar Hi-Z & 4.7k write-lock"
-
     opcode_risc_break:
       principle: "Strict NMOS silicon datapath fidelity: 0 invented latches/ALU ops; 0WS DL-pre-primed root (0.5T decode)"
       latches:
         adder_dual_nibble: "Narrowed 2x4b Dual-Nibble ADDER (ADD, SADD, SUB, NOP only; 1Q/stage, lo->hi DDS) w/ AO, AL, APC, TMP_H & AS (ASH:ASL wired to D0-7)"
-        adder_ops: "NOPLD/INCLD/DECLD/SADD via ADD/SUB/NOP + SIGN_EXT; pre-ripple default emit (src>AO+-k:WB) vs post-ripple (WB:src+-k>AO)"
-        cycler_ab_latches: "Cycler owns AB_H:AB_L (A0-15) pad latches + local clustered 4b +1 inc (SP-2 upward-only); split /WE_L/H avoids RMW (+1 WR/RD on misaligned DRAM)"
-        alu_2stage: "Dual-nibble ALU w/ local PLA (autonomous next-1H DDS write-back + 1-entry ALU_WB_PEND interlock) + AW/AW'/F/F'/FLG/AA/AB/AR + SIGN_EXT; active F wired to Main PLA"
-        lr_reg_field: "Register Field PLA directly resolves LR as source/target operand"
 Используйте код с осторожностью.
+adder_e_cluster: "8b segment regs {E_PC,E_HL,E_IXY,E_V,E_SP} in ADDER cluster; static E @ t=0 if C_16=0; conditional C_16 carry + TDS ao_e_write"
+adder_ops: "NOPLD/INCLD/DECLD/SADD via ADD/SUB/NOP + SIGN_EXT; pre-ripple default emit (src>AO+-k:WB) vs post-ripple (WB:src+-k>AO)"
+cycler_ab_latches: "Cycler owns AB_H:AB_L (A0-15) pad latches + local clustered 4b +1 inc (SP-2 upward-only); split /WE_L/H avoids RMW (+1 WR/RD on misaligned DRAM)"
+alu_2stage: "Dual-nibble ALU w/ local PLA (autonomous next-1H DDS write-back + 1-entry ALU_WB_PEND interlock) + AW/AW'/F/F'/FLG/AA/AB/AR + SIGN_EXT; active F wired to Main PLA"
+lr_reg_field: "Register Field PLA directly resolves LR as source/target operand"
 fetch_guards: "LD !OCC DL,(WB:PC+2>AO) / LD Z DL,(:AO:PC+) early-cancels false branches/calls with 0 extra reads"
-dram_cycler_bus: "Autonomous DDS DRAM/SRAM cycler offloading byte-striping, lane steer, A0=1 +1 split & 1-entry posted DRAM_WR_BUF"
+dram_cycler_bus_topology:
+bus_link: "Dedicated ADDER->cycler ADDR_DDS[7:0] w/ self-timed ao_l/h/e_write; cycler routes via SRAM_HIT + POST_RIPPLE + AO_DONE"
+dio_buf_qds_dds_sds: "On-die 4B DIO_BUF[0..3] ring buffer (~155 FETs) supports bootstrap-selectable QDS (4B/1.5T), DDS (2B/1.0T), & SDS (1B/1.0T)"
+dio_invert_mux: "Complementary /Q pass-FET tap in DIO_BUF (~8-16 FETs, ~0.8-2.2ns) gated by SRAM_INV/DRAM_INV in CFG_MODE_CTRL"
 primitives:
 - "LD ,() : Implicit memory wait on !DATA_READY (0WS 1H root -> stretched by bootstrap CFG_MODE_CTRL)"
 - "LD !OCC DL,(WB:PC+2>AO) | LD Z DL,(:AO:PC+) : Early-cancel opcode fetch when condition holds"
@@ -141,6 +147,12 @@ canonical_bipolar_scratchpad:
 chip: "Single-chip 7489 / 82S25 (16x4 bipolar TTL RAM, DIP-16, open-collector /O tied to D via 1-2.2k pull-ups)"
 pins_timing: "9 CPU pins (SA[3:0], SAD[3:0], /SWE; /CE=GND); 0 glue (0ns RD<->WR); 0.5Q/nibble -> 1B/0.25T, 16b/0.5T"
 evolution: "7489 (35-50ns) -> 74S189 (35ns) -> 1982 74F189 (25-28ns, 4-5MHz) -> 1985 74F189A/F219A (8-12ns, 8-12MHz)"
+quarter_t_1q_nibble_sram: "1x 64x4 (32B) 82S21/AM27S03 (11p: SA[5:0]+SAD[3:0]+/SWE) @ 1Q=70.48ns/nib (16b=1.0T; relaxed octal-T)"
+2x8b_bank_1q_dds: "2x8b banks (Bank A lo + Bank B hi) w/ 1Q (60ns active + 10ns guard) half-strobes & gated /CS+/WE (74F139)"
+fast_0_5q_74f573_addr_strobe: "30-35ns (0.5Q) transparent 74F573 addr latch overlaps 45ns 2148H-2 lookup -> 0.5T muxed 16b RD, 0.5T-0.75T WR"
+era_1975_1977_mem_selection:
+sram_75_77: "32B: 4x 7489 / 1x 82S21 (64x4) @ 0.5T-1.0T | 256B: 2x 6810 (128x8, 1.5T-2.0T) | 512B: 4x 2101A/2111A (256x4) | 2KB: 16x 2102A-2 (150ns @ 1.0T)"
+dram_75_77: "MK4027-2/-3 (4Kx1, 150-200ns, t_RC=320-375ns) & MK4116-2/-3 (16Kx1); requires 1.5T or Odd-Even Crossbar precharge"
 muxed_ad_12pin_protocol:
 pins: "12 pins: SAD[7:0] + SLE_L + SLE_H + /SWE_L + /SWE_H + ext 2x 74F573 addr latches + 74F543/245 buffers"
 standalone_150ns_windows: "0-15ns t_OH | 15-150ns A valid, /OE=0(<=80ns, t_OE=70ns), I/O invalid | >=150ns valid (t_OHZ 35-50ns)"
@@ -344,18 +356,15 @@ unbound_assumptions_fut_check:
 fut_discovery: "tri_op_3_operand_alu: when k>=2 RR pfxs stream in M1, pair rr_prev w/ rr_curr on 16b ALU/mem-mem ops"
 future_tasks:
 - "half_t_risc_seq_expansion: rewrite POP rr, RET cc, JP cc,nn, JR cc,e, LD (nn),A, LD A,(nn) w/ 0WS cycler & WB:"
-- "pdip40_34pin_bipolar_mux_table: finalize 34-pin VIRT_EN muxing for 9-pin 7489 + DDS DRAM + 12-pin muxed SRAM"
 - "freq_scaling_4_to_6mhz_closure: verify 1Q carry/ALU vs 0.5Q octal-T latch-to-latch DDS across 0C..70C at 4-6MHz"
 - "ula_spare_pin_mmio_map: define exact register map for 8 spare ULA pins (VDP_MODE, SCROLL, BORDER, BURST_DIS)"
 - "pal_subcarrier_gen: finalize 4.43361875MHz PAL colorburst generation/lock alongside 14.18758MHz crystal"
-- "distributed_pla_split: partition monolithic Z80 PLA into sub-PLAs (~2,800-3,100 core FETs saved in ~14mm2 die)"
 - "quarter_t_inter_pla_signaling: evaluate internal 0.25T (Q0..Q3) inter-PLA signaling + depletion keepers"
 - "free_wheeling_commit_discipline: combinational datapaths churn until explicit Q3/Phi2 COMMIT strobes fire"
 - "decoupled_front_end_cracker_16b: autonomous 16b sliding-window Front-End fetch/prefix cracker w/ quick_skip"
 - "autonomous_0ws_sram_cycler: 0.5T SRAM Access Cycler w/ local AW[0..3]/EF[0..3] in ALU & 8-wire F_BUS"
-- "interlock_only_dram_stall: 1-entry PENDING_DST load scoreboard + 1-entry posted DRAM_WR_BUF"
+- "interlock_only_dram_stall: 1-entry PENDING_DST load scoreboard + 4-byte DIO_BUF[0..3] RAW hazard rules"
 - "pdip40_pin_drive_thermals: keep ~2-3.2mA drive on off-chip pins (<1W at +70C); boost local 0WS SD[15:0] (~4mA)"
-- "dram_cycler_bus_topology: resolve unified internal bus vs dedicated point-to-point links for DDS & ADDER"
 - "risc_main_page_slot_rebalance: reassign 16 evicted/migrated opcodes from cols 4..7 into open FREE slots"
 - "ldao_ll_remaining_rr_slots: allocate 2 remaining --- slots in risc_main_page col 7 (0x76, 0x77)"
 - "alures_2stage_alu_pipeline: formalize hazard rules for 2-stage ALU pipeline vs 1-step SCF/CCF/LD R,R/LL/LR"
@@ -365,4 +374,15 @@ future_tasks:
 - "push_rr_3_55mhz_after_ripple_1op: optional 0.5T single-op DECLD (SP>AO:SP-2),ORR fast form at 3.55MHz"
 - "bank_l_alu_op_o1_o3_timing: verify O1 read / O3 write back-to-back turnaround on BANK_L reg ops (DEC C/E/L)"
 - "alu_wb_pend_raw_bypass: formalize 1-entry ALU_WB_PEND DST_R[2:0] RAW stall/bypass for autonomous ALU WB"
+- "nmos1_post_ripple_binning_bounds: F_OSC ceiling 6.9-8.8MHz (Q1 /RAS) or 10.4-13.2MHz (Q1.5 /RAS) on binned NMOS-I; F_min 6-14.19MHz"
+- "cycler_post_ripple_1t_align: route POST_RIPPLE+AO_DONE to cycler to auto-park CPU_CLK to next 0.5T SRAM or 1.0T T_CPU boundary"
+- "aligned_16b_0ws_overlap: A0=0 16b reads deliver high byte at 0WS & writes preload low byte at 0WS; A0=1 splits (+1 cycle)"
+- "bootstrap_dram_speed_autodetect:
+~48B EPROM routine probing QDS/DDS/SDS & DRAM_SPD (2.0T->1.5T->1.0T) + POST_RIPPLE_FAST at reset"
+- "e_cluster_sw_ops: LRPAGE/SYS ops for addressing-only E regs (LD E,A/n/LR0, CALLF/RETF/JPF, EX/LD E,E, INC/DEC E, E_DE/E_BC)"
+- "rel24_24b_datapath_ext: EAS latch, 3-step lo->mid->hi ADDER ripple, E-extended EAO/EAL/EAPC/EWZ/AB_E latches"
+- "fifo_shl5_4rr_reg_cache: 20b {EXX1:0,RR_ID2:0} FIFO_SHL5 4-slot on-die reg cache (~125 FETs), 0-cycle EXX mutation, 1Q nibble SRAM backing"
+- "reg_cache_3b_lfu_aging: 4-slot split BANK_L/H reg cache (~350-460 net FETs saved) w/ 3b saturating 0..7 cnt + miss-decrement aging (~185 FETs), SP/PC in ADDER, AW/EF in ALU"
+- "aw_ef_prime_sram_evict: evict AW' & EF' to 2-word (8-nibble) slot in 64x4 SRAM (~220-260 FETs saved); 1.0T atomic 1Q/nib EX AF,AF' swap"
+- "rr_stack_2x1q_dds_1_5t: allow any cached RR as secondary stack pointer via RDATA_L/H (L->H) -> ADDER +-2 :WB (~55-85 FETs, 1.5T hit vs 1.0T 0-DDS EXX0.SP)"
 HANDOFF_EOF
