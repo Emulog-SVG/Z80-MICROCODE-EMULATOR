@@ -1,0 +1,152 @@
+The complete, un-truncated LLM-STATE-HANDOVER-v6.0-UNIFIED YAML snapshot is exported below with full architectural fidelity across all core subsystems (ISA-1 CPU, Odd-Even 2T Crossbar, VDP 48-Pin ULA & Tiled/Blitter Partition, ZX48K Modular Mechanical/PSU Platform, and Future Tasks), terminated with <handoff_eof/>.
+yaml
+LLM-STATE-HANDOVER-v6.0-UNIFIED:
+  meta:
+    revision: "v6.0-UNIFIED-REV3"
+    status: "COMMITTED"
+    user_turn_count: 43
+    target_era: "1982-1983"
+    design_philosophy: "Minimum-gate/FET bipolar CDI ULA + commodity 74F/74LS MSI + zero-contention 16-bit DDS DRAM crossbar"
+
+  isa1_cpu_core:
+    clock_mhz: 3.546895 # 1T = 281.94 ns (14.18758 MHz / 4)
+    datapath_width: "8-bit ALU + 16-bit Address/Pointer ADDER + 16-bit AW (A:W) shift latch"
+    memory_interface:
+      dram_access: "1.0T (281.94 ns) per 16-bit DDS turn (80 contention-free turns/line in 50/50 interleave)"
+      sram_opcache: "0WS local SRAM instruction cache (sram_pc) + CATCH opcache allowing full-speed execution during VDP burst lines"
+    alu_and_adder_features:
+      south_alu: "8-bit logic/arith, nibble shifter (RLC/RRC/SHLC/SHRC), NIBREV, 16-bit CY/AW shift buffer"
+      north_adder: "16-bit pointer increment/offset + hardware block engine (LDIR/FILL) for fast display-list & memory moves"
+
+  bus_arbitration:
+    topology: "Odd-Even 2T 16-bit DDS DRAM Crossbar (AD[7:0] + A8/A9, DATA_L/DATA_H)"
+    turns_per_pal_line: 227 # 227.0T @ 3.546895 MHz = 64.00 us
+    interleave_modes:
+      balanced_50_50: "80 VDP turns + 80 CPU turns across 160T active safe area (88+88 in 352px, 90+90 in 360px, 92+92 in 368px)"
+      vdp_burst: "Up to 160-184 VDP turns during active scanline for high-bpp direct RGB modes; CPU runs from 0WS SRAM opcache"
+      idle_blitter_priority: "VDP_BEAM_REQ > ULA_BLIT_REQ > IDLE (blitter runs strictly in unused VDP turns; 0 CPU stall, 0 beam snow)"
+    handover_timing:
+      early_grant_preskew: "0.5Q (35.24 ns) early /EARLY_GRANT assertion before VDP Q3 ends via 14.19 MHz dual-edge vernier"
+
+  VDP_section:
+    clocks_and_pal_raster:
+      master_crystal_mhz: 14.18758 # 1Q = 70.48 ns, 0.5Q = 35.24 ns
+      pixel_clocks_mhz:
+        - "14.18758 MHz (2X hi-res mode, 4 px/T)"
+        - "7.09379 MHz (1X square-pixel standard, 2 px/T)"
+        - "3.546895 MHz (0.5X half-width / low-bandwidth mode, 1 px/T, 15.625 kHz PAL sync preserved)"
+      pal_frame_timing:
+        line_duration_us: 64.00
+        line_cycles_t: 227.0 # 160-184T active + 0.5-24.5T border + 42.5T H-blank
+        field_lines: 312.5 # 240-288 active + 24.5-72.5 V-blank/border
+        field_cycles_t: 70937.5 # 50.00 Hz PAL field (141,875T per 25 Hz frame)
+      fullscreen_1to1_presets:
+        # FRAME_SIZE[1:0] presets (Width/2 = exact integer 1.0T DRAM turns per visible scanline)
+        "00": { res: "320x240p / 640x480i", active_t: 160, blank_t: 67, tiles_8x8: "40x30", role: "Standard safe area" }
+        "01": { res: "352x264p / 704x528i", active_t: 176, blank_t: 51, tiles_8x8: "44x33", role: "CRT-bezel fullscreen (CCIR-601/VCD width, 1:1 square px)" }
+        "10": { res: "360x270p / 720x540i", active_t: 180, blank_t: 47, tiles_8x8: "45x33.75", role: "Exact 4:3 aspect" }
+        "11": { res: "368x288p / 736x576i", active_t: 184, blank_t: 43, tiles_8x8: "46x36", role: "Max PAL active overscan" }
+
+    ula_48dip_tiled_blitter_partition:
+      silicon_target:
+        package: "48-pin PDIP (Ferranti ULA5C000 / ULA6C000)"
+        populated_gates: "~680 gates (~56% of 1,200-1,400 gate array; single-pass autoroute, high wafer yield)"
+        power_and_thermal: "~305 mW total (~280 mW core @ 7.09/3.55 MHz + ~25 mW 14.19 MHz vernier) + low-profile extruded Al DIP heatsink (theta_JA ~25-30 C/W)"
+        die_economics: "Full 5C/6C die perimeter needed for 48 pads; 56% population eliminates Issue-1 Spectrum overheating and cuts NRE/yield loss"
+      ula_14mhz_edge_skew_vernier:
+        clock_mhz: 14.18758
+        step_ns: 35.24 # 0.5Q dual-edge vernier (~30 ULA gates)
+        functions:
+          - "/EARLY_GRANT crossbar handover alignment"
+          - "/RAS, /CAS, and t_RP precharge DDS DRAM strobe shaping"
+          - "Sub-pixel SCX and 640px (2X) dot phase alignment"
+      external_msi_chips:
+        - { part: "4x 74LS161 / 74F161", qty: 4, role: "12-bit CMD_PTR[11:0] (0x000-0xFFF 4,096B wrap) + H/V COL[5:0] raster counters (saves ~210 ULA gates)" }
+        - { part: "1x 74F157", qty: 1, role: "Blitter SRC/DST byte-transparency merge & X_OFF DATA_L<->DATA_H byte-swap mux" }
+        - { part: "1x 74LS374", qty: 1, role: "RGB555 high-byte pixel latch" }
+      ula_index_sram:
+        device: "1x 2114 (1024x4 static RAM, 120ns)"
+        pin_interface: "6 ULA pins (ULA_SD[3:0], ULA_LE_SA, /ULA_SRAM_WE); SA[9:4] driven directly by external 74LS161 COL[5:0], SA[1:0]=nibble phase"
+        prefetch_cadence: "1Q (70.48ns)/nibble pipelined H-blank CHAR prefetch on Y_LINE%8==0 (40-45T total, once per 8 lines); leaves 768x4 nibbles (384B) free"
+
+    legacy_and_direct_rgb_modes:
+      legacy_reference_modes:
+        mode_0: "8x8i text/tile (80x60 or 40x60), coupled [CHAR, ATTR], 2KB font @ 0x4000"
+        mode_1a: "8x16i text/tile (80x30 or 40x30), coupled [CHAR, ATTR], 4KB font @ 0x4000 (4,800B screen)"
+        mode_1b: "16x16i super-tile (20x30), 16b CHAR (32,512 glyphs) + 16b ATTR + 16b GLYPH in 3 DDS turns (+1 free)"
+        mode_2: "Raw 640x480i 1bpp linear bitmap (4,800B ATTR @ 0x0000 + 38,400B bitmap @ 0x12C0)"
+        mode_3: "8x2bpp LRGB4 tile (320x480i), ATTR[15:0] = 4x 4b LRGB palette"
+        mode_4: "Direct 4-bit LRGB linear (320x480i @ 80 turns/line, 640x480i @ 160 turns/line)"
+        mode_5: "Direct RGB332 linear/tiled (320x480i @ 160 turns/line)"
+        mode_6: "RGB565 tile cell (140x480i / 160x480i)"
+      stripped_48dip_tiled_color_tiers:
+        # Power-of-2 direct-RGB formats (non-aligned 3/5/6/7-bit depths discarded to save barrel-shifter gates; 2114 H-blank CHAR cache active)
+        tier_1_4bpp: { format: "4-bit RGBI (1111, 16 direct colors, 0x0=transparent)", turns_per_8px_row: 2, max_res_50_50: "320x240p (80 turns)", max_res_burst: "368x288p (92 turns)" }
+        tier_2_8bpp: { format: "8-bit 2222 LRGB (LL_RR_GG_BB) / RGB332 (256 direct colors, 0x00=transparent)", turns_per_8px_row: 4, max_res_50_50: "160x240p (80 turns)", max_res_burst: "352x264p (176 active turns, ~45.5 avg free H-blank turns/line)" }
+        tier_3_12bpp: { format: "12-bit RGB444 (4,096 colors: 1px/word w/ 4b T/PRIO/BLEND flags @ 8 turns, or 3-nibble packed 4px/3words @ 6 turns)", turns_per_8px_row: "6 or 8", max_res_burst: "208x240p (6T) / 160x240p (8T)" }
+        tier_4_16bpp: { format: "16-bit RGB555+T (32,768 colors, bit15=transparent so 0x0000 black stays usable)", turns_per_8px_row: 8, max_res_50_50: "80x240p (80 turns)", max_res_burst: "160x240p (160 turns)" }
+
+    bounded_scroll_and_clipping:
+      scx_horizontal: "SCX[7:0]: low 3 bits select 0..7px tap on pixel serializer; upper 5 bits add coarse tile column offset"
+      v_skip_vertical: "V_SKIP[7:0]: down-counter loaded at VSYNC; emits BORDER color & suppresses active DDS fetches for top N lines"
+      guard_band_curtain: "H_MARGIN[7:0] & V_MARGIN[7:0]: programmable 4-edge border-mask window (eliminates NES-style edge pop-in during 8-way scroll & enables 50fps iris/curtain wipes)"
+
+    idle_turn_tile_imprint_blitter:
+      purpose: "Hardware tile-into-tile sprite compositor running strictly in idle VDP DDS turns"
+      free_turn_budget: "~23,021 free DDS turns per 50 Hz field (~46,042 turns per 25 Hz frame) even in 352x264p 8-bit burst mode"
+      command_ring: "4,096-byte ring buffer (512 descriptors x 8B, 12-bit hardware counter wrap)"
+      descriptor_layout_8b:
+        bytes_0_1: "SRC_ADDR[15:0] (source sprite tile row pointer)"
+        bytes_2_3: "DST_TILE_ADDR[15:0] (scratch dynamic tile buffer in FONT_BASE)"
+        bytes_4_5: "MAP_CELL_ADDR[15:0] (target tilemap cell patched atomically on final turn)"
+        byte_6: "OFF_BYTE (X_OFF / Y_OFF alignment)"
+        byte_7: "CFG_BYTE (control / end-of-list 0x00 / optional ROW_MASK[7:0])"
+      execution_sequence: "4 turns (8B descriptor fetch) + 32 x [RD_SRC, RD_DST, WR_MERGED] (96 turns, 0x00=transparent) + 1 turn (atomic MAP_CELL patch) = 101 turns/tile"
+      throughput: "227 full 64-byte (8x8 256-color) tiles per 50 Hz field (~25 full 16x16 3x3-tile sprites @ 50Hz, ~51 @ 25Hz)"
+
+  zx48k_platform:
+    mechanical_mod:
+      keyboard_to_pcb_stack:
+        orientation: "All DIPs & 48p ULA+heatsink mounted upside-down on bottom side of main PCB; top side is flat mechanical typing anvil"
+        layers_bottom_to_top:
+          - "1. Main PCB top surface with uncut ~2.5-3.0mm through-hole solder pins (eliminates post-wave lead-trimming pass)"
+          - "2. 3.0mm soft rubber/silicone shock-cushion sheet (absorbs uncut pins & isolates key impact from solder joints)"
+          - "3. 0.8-1.0mm rigid ABS/phenolic puncture-proof anvil plate"
+          - "4. 3-layer flexible Mylar keyboard sandwich + silicone rubber keymat"
+      emc_and_thermal:
+        ula_heatsink: "Low-profile aluminum DIP heatsink epoxied/clipped to 48p ULA (theta_JA ~25-30 C/W)"
+        fcc_emc_shield: "Self-adhesive copper/aluminum foil applied to inner lower ABS shell & rigid plastic anvil plate, tied to PCB GND"
+      wider_case_layout:
+        dimensions_mm: "295 x 155 (+57mm wider than vanilla 233x144mm wedge)"
+        key_layout: "19mm standard key pitch, full-width bottom-center SPACE, L-shaped ENTER, dedicated DELETE/EDIT/cursor keys wired in parallel via dual-trace Mylar to CAPS+0/5/6/7/8 (0 extra ULA pins)"
+      clamshell_ide_flyback_psu:
+        case_construction: "Fully openable clamshell enclosure + hinged rear service lid + internal plastic safety partition wall"
+        psu_dock_connector: "Zero-gap keyed 2x4 IDE-style shrouded box-header (2x +5V, 2x GND, +9V/UNREG, /PWR_GOOD)"
+        psu_daughter_pcb: "45-65kHz isolated EE19 (or 2x EE13 low-profile) ferrite flyback SMPS, >3,000V galvanic isolation, soldered tin-plate Faraday shield can, 2-pin C7 figure-8 mains cord, +5V @ 1.5A output (eliminates legacy +12V/-5V inverter & 7805 heat)"
+Используйте код с осторожностью.
+economics_1982: "~£179 net 1982 UK retail parity with £175 48K Spectrum (PSU & clamshell delta offset by keyboard-to-PCB & return-rate savings)"
+spectrum_modular_extension:
+compact_main_unit: "~190 x 135 x 38 mm console footprint housing main PCB, 48p ULA+heatsink, and hinged rear flyback PSU bay"
+detachable_keyboard: "Passive 13-pin (8x5 matrix) coiled cable + slim ~295 x 140 x 22 mm ergonomic rubber-anvil Mylar keyboard unit (0 active ICs inside)"
+dual_buttonless_tape_decks:
+dock_bus: "Keyed 2x4 zero-gap side/daisy-chain dock (Deck A + Deck B) sharing calibrated LM358 + 74LS14 Schmitt EAR/MIC stage"
+full_logic_transport: "Buttonless 1-solenoid cam-gear head engage (/HEAD_ENGAGE), FWD/REV DC motor (/MOTOR_A, /MOTOR_B, DIR), /CASSETTE_IN leaf switch, /REC_EN write-protect switch, and IR reel-pulse digital tape counter with 10x auto-seek"
+baud_rates: "1,500 baud standard Spectrum compatible + 4,800-6,000 baud turbo-tape (~65s for 48KB)"
+retail_tiers_1982:
+base_detachable_system: "~£184"
+single_deck_bundle: "~£198"
+dual_deck_studio_bundle: "~£218-£222"
+future_tasks:
+vdp_scanline_cfg_rle_dda:
+status: "QUEUED_ALTERNATIVE"
+description: "Replaces vdp_quad_screen_mirroring; per-scanline RLE display-list stream {SKIP_PX, TILE_CNT} + mid-line JMP_PTR arbitrary split/quad viewports + inline BORDER/SCX + explicit GLYPH_ROW[3:0] V-scaling + continuous 4-bit DDA H_STEP[3:0] horizontal zoom accumulator"
+ula_blitter_companion:
+status: "QUEUED_ALTERNATIVE"
+description: "Optional standalone ~328-gate 24-pin DIP Ferranti 2C/3C companion blitter ULA (or 12-15 IC 74F/74LS + 82S123 discrete prototype BOM) if unbundled from the 48-pin VDP ULA"
+<handoff_eof/>
+
+<FollowUp>
+Would you like to:
+* Define the **48-pin DIP pinout assignment** and **MMIO register map** (`FONT_BASE`, `TEXT_BASE`, `CMD_BASE`, `FRAME_SIZE`, `VDP_MODE`, `SCX`, `V_SKIP`, `H/V_MARGIN`, `BORDER`, `TAPE_CTL`)
+* Start a new session or design block using this `v6.0-UNIFIED-REV3` handover
+</FollowUp>
